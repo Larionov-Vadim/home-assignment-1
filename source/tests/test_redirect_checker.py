@@ -8,10 +8,6 @@ from source import redirect_checker
 def stop_cycle(self):
     redirect_checker.loop = False
 
-def start_cycle(self):
-    redirect_checker.loop = True
-
-
 config = Config()
 config.CHECK_URL = 'url'
 config.HTTP_TIMEOUT = 1
@@ -48,7 +44,6 @@ class RedirectCheckerTestCase(unittest.TestCase):
             redirect_checker.loop = True
 
     def test_main_check_args_is_daemon_and_pidfile(self):
-
         args = mock.MagicMock()
         args.daemon = True
         args.pidfile = True
@@ -56,7 +51,6 @@ class RedirectCheckerTestCase(unittest.TestCase):
         mock_parse_cmd_args = mock.Mock(return_value=args)
         mock_daemonize = mock.Mock()
         mock_create_pidfile = mock.Mock()
-
         with patch('source.redirect_checker.parse_cmd_args', mock_parse_cmd_args),\
              patch('source.redirect_checker.daemonize', mock_daemonize),\
              patch('source.redirect_checker.create_pidfile', mock_create_pidfile),\
@@ -71,7 +65,6 @@ class RedirectCheckerTestCase(unittest.TestCase):
             self.assertTrue(mock_create_pidfile.assert_called)
 
     def test_main_check_args_is_not_daemon_and_pidfile(self):
-
         args = mock.MagicMock()
         args.daemon = False
         args.pidfile = False
@@ -79,7 +72,6 @@ class RedirectCheckerTestCase(unittest.TestCase):
         mock_parse_cmd_args = mock.Mock(return_value=args)
         mock_daemonize = mock.Mock()
         mock_create_pidfile = mock.Mock()
-
         with patch('source.redirect_checker.parse_cmd_args', mock_parse_cmd_args),\
              patch('source.redirect_checker.daemonize', mock_daemonize),\
              patch('source.redirect_checker.create_pidfile', mock_create_pidfile),\
