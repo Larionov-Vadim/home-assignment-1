@@ -3,7 +3,6 @@ import mock
 from mock import patch
 from source.lib.utils import Config
 from source import redirect_checker
-from argparse import Namespace
 
 
 def stop_cycle(self):
