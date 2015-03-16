@@ -5,6 +5,7 @@ from source import notification_pusher
 import signal
 from requests import RequestException
 from gevent import queue as gevent_queue
+import tarantool
 
 config = notification_pusher.Config()
 config.QUEUE_HOST = '127.0.0.1'
@@ -137,26 +138,16 @@ class NotificationPusherTestCase(unittest.TestCase):
         notification_pusher.done_with_processed_tasks(task_queue_mock)
         self.assertEqual(logger_mock.debug.call_count, 1)
 
-    """
-        Ошибка в getattr_mock()
-        RuntimeError: maximum recursion depth exceeded while calling a Python object
-    """
-    # def test_done_with_processed_tasks(self):
-    #     task_mock = mock.Mock()
-    #     task_queue_mock = mock.Mock()
-    #     task_queue_mock.qsize.return_value = 1
-    #     task_queue_mock.get_nowait.side_effect = lambda: (task_mock, 'fake_action_name')
-    #
-    #     logger_mock = mock.Mock()
-    #     notification_pusher.logger = logger_mock
-    #
-    #     getattr_mock = mock.Mock(side_effect=getattr_fake)
-    #     with mock.patch('__builtin__.getattr', getattr_mock):
-    #         notification_pusher.done_with_processed_tasks(task_queue_mock)
-    #     self.assertEqual(getattr_mock.call_count, 1)
 
+    # Объяснить
+    def test_done_with_processed_tasks(self):
+        task_mock = mock.Mock()
+        task_queue_mock = mock.Mock()
+        task_queue_mock.qsize.return_value = 1
+        task_queue_mock.get_nowait.side_effect = lambda: (task_mock, 'fake_action_name')
 
+        logger_mock = mock.Mock()
+        notification_pusher.logger = logger_mock
 
-
-
-
+        notification_pusher.done_with_processed_tasks(task_queue_mock)
+        self.assertEqual(logger_mock.debug.call_count, 2)
