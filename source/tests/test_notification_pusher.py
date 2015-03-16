@@ -3,6 +3,7 @@ import unittest
 import mock
 from source import notification_pusher
 import signal
+from requests import RequestException
 
 config = notification_pusher.Config()
 config.QUEUE_HOST = '127.0.0.1'
@@ -68,7 +69,7 @@ class NotificationPusherTestCase(unittest.TestCase):
         self.assertFalse(os_exit_mock.called)
 
     def test_daemonize_raise_os_error_exception(self):
-        os_fork_mock = mock.Mock(side_effect=OSError(0, 'Boom!'))
+        os_fork_mock = mock.Mock(side_effect=OSError(0, 'Test exception'))
         with mock.patch('os.fork', os_fork_mock, create=True):
             self.assertRaises(Exception, notification_pusher.daemonize)
 
@@ -90,3 +91,19 @@ class NotificationPusherTestCase(unittest.TestCase):
         self.assertNotEqual(return_cfg.Key, 'value')
         self.assertNotEqual(return_cfg.kEY, 'value')
         self.assertNotEqual(return_cfg._KEY, 'value')
+
+    def test_notification_worker(self):
+        task_mock = mock.MagicMock()
+        task_queue_mock = mock.Mock()
+        with mock.patch('requests.post', mock.Mock()),\
+             mock.patch('json.dumps', mock.Mock()):
+            notification_pusher.notification_worker(task_mock, task_queue_mock)
+        task_queue_mock.put.assert_called_once_with((task_mock, 'ack'))
+
+    def test_notification_worker_with_request_exception(self):
+        task_mock = mock.MagicMock()
+        task_queue_mock = mock.Mock()
+        with mock.patch('requests.post', mock.Mock(side_effect=RequestException('Test exception'))),\
+             mock.patch('json.dumps', mock.Mock()):
+            notification_pusher.notification_worker(task_mock, task_queue_mock)
+        task_queue_mock.put.assert_called_once_with((task_mock, 'bury'))
