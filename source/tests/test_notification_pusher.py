@@ -1,21 +1,9 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
 import unittest
 import mock
 from source import notification_pusher
-import signal
 from requests import RequestException
 from gevent import queue as gevent_queue
-import tarantool
-
-config = notification_pusher.Config()
-config.QUEUE_HOST = '127.0.0.1'
-config.QUEUE_PORT = '8080'
-config.QUEUE_SPACE = ''
-config.QUEUE_TUBE = ''
-config.QUEUE_TAKE_TIMEOUT = ''
-config.WORKER_POOL_SIZE = 4
-config.SLEEP = 1
-config.HTTP_CONNECTION_TIMEOUT = 1
 
 
 def execfile_fake(filepath, variables):
@@ -43,7 +31,7 @@ class NotificationPusherTestCase(unittest.TestCase):
         with mock.patch('os.fork', mock.Mock(return_value=pid)), \
              mock.patch('os._exit', os_exit_mock, create=True):
             notification_pusher.daemonize()
-        assert os_exit_mock.called
+        os_exit_mock.assert_called_once_with(0)
 
     def test_daemonize_pid_zero_then_not_zero(self):
         pid = [0, 724]      # pid == 0 and pid != 0
@@ -55,7 +43,7 @@ class NotificationPusherTestCase(unittest.TestCase):
              mock.patch('os._exit', os_exit_mock), \
              mock.patch('os.setsid', mock.Mock()):
             notification_pusher.daemonize()
-        assert os_exit_mock.called
+        os_exit_mock.assert_called_once_with(0)
 
     def test_daemonize_pid_alvays_zero(self):
         os_exit_mock = mock.Mock()
@@ -64,7 +52,7 @@ class NotificationPusherTestCase(unittest.TestCase):
              mock.patch('os._exit', os_exit_mock), \
              mock.patch('os.setsid', mock.Mock()):
             notification_pusher.daemonize()
-        self.assertFalse(os_exit_mock.called)
+        self.assertEqual(os_exit_mock.call_count, 0)
 
     def test_daemonize_raise_os_error_exception(self):
         os_fork_mock = mock.Mock(side_effect=OSError(0, 'Test exception'))
@@ -72,7 +60,7 @@ class NotificationPusherTestCase(unittest.TestCase):
             self.assertRaises(Exception, notification_pusher.daemonize)
 
     def test_daemonize_pid_zero_then_raise_os_error_exception(self):
-        os_fork_mock = mock.Mock(side_effect=[0, OSError(0, 'Boom!')])
+        os_fork_mock = mock.Mock(side_effect=[0, OSError(0, 'Test exception')])
         with mock.patch('os.fork', os_fork_mock, create=True), \
              mock.patch('os.setsid', mock.Mock(), create=True):
             self.assertRaises(Exception, notification_pusher.daemonize)
@@ -151,3 +139,16 @@ class NotificationPusherTestCase(unittest.TestCase):
 
         notification_pusher.done_with_processed_tasks(task_queue_mock)
         self.assertEqual(logger_mock.debug.call_count, 2)
+
+
+    # Супер тест! Проверил работу моков и покрыл ветвь. Великолепно!
+    def test_main_loop(self):
+        config_mock = mock.MagicMock()
+        logger_mock = mock.Mock()
+        queue_mock = mock.Mock()
+        gevent_queue_mock = mock.Mock()
+        notification_pusher.logger = logger_mock
+        with mock.patch('tarantool_queue.Queue', queue_mock), \
+             mock.patch('gevent.queue.Queue', gevent_queue_mock):
+            notification_pusher.run_application = False
+            notification_pusher.main_loop(config_mock)
