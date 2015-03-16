@@ -4,6 +4,7 @@ import mock
 from source import notification_pusher
 import signal
 from requests import RequestException
+from gevent import queue as gevent_queue
 
 config = notification_pusher.Config()
 config.QUEUE_HOST = '127.0.0.1'
@@ -23,10 +24,6 @@ def execfile_fake(filepath, variables):
     variables['kEY'] = 'value'
     variables['_KEY'] = '_value'
 
-
-signums = list()
-def stop_handler_fake(signum):
-    signums.append(signum)
 
 class NotificationPusherTestCase(unittest.TestCase):
     def test_create_pidfile_example(self):
@@ -95,15 +92,71 @@ class NotificationPusherTestCase(unittest.TestCase):
     def test_notification_worker(self):
         task_mock = mock.MagicMock()
         task_queue_mock = mock.Mock()
+
+        logger_mock = mock.Mock()
+        notification_pusher.logger = logger_mock
+
         with mock.patch('requests.post', mock.Mock()),\
              mock.patch('json.dumps', mock.Mock()):
             notification_pusher.notification_worker(task_mock, task_queue_mock)
+
         task_queue_mock.put.assert_called_once_with((task_mock, 'ack'))
 
     def test_notification_worker_with_request_exception(self):
         task_mock = mock.MagicMock()
         task_queue_mock = mock.Mock()
+
+        logger_mock = mock.Mock()
+        notification_pusher.logger = logger_mock
+
         with mock.patch('requests.post', mock.Mock(side_effect=RequestException('Test exception'))),\
              mock.patch('json.dumps', mock.Mock()):
             notification_pusher.notification_worker(task_mock, task_queue_mock)
+
         task_queue_mock.put.assert_called_once_with((task_mock, 'bury'))
+
+
+    # Разве исключение сработает? Цикл ведь проверяет task_queue.qsize() => очередь не пуста
+    def test_done_with_processed_tasks_empty_queue_raise_exception(self):
+        task_queue_mock = mock.Mock()
+        task_queue_mock.qsize.return_value = 1
+        task_queue_mock.get_nowait.side_effect = gevent_queue.Empty('Test exception')
+
+        logger_mock = mock.Mock()
+        notification_pusher.logger = logger_mock
+
+        self.assertRaises(gevent_queue.Empty, notification_pusher.done_with_processed_tasks(task_queue_mock))
+
+    def test_done_with_processed_tasks_qsize_zero(self):
+        task_queue_mock = mock.Mock()
+        task_queue_mock.qsize.return_value = 0
+
+        logger_mock = mock.Mock()
+        notification_pusher.logger = logger_mock
+
+        notification_pusher.done_with_processed_tasks(task_queue_mock)
+        self.assertEqual(logger_mock.debug.call_count, 1)
+
+    """
+        Ошибка в getattr_mock()
+        RuntimeError: maximum recursion depth exceeded while calling a Python object
+    """
+    # def test_done_with_processed_tasks(self):
+    #     task_mock = mock.Mock()
+    #     task_queue_mock = mock.Mock()
+    #     task_queue_mock.qsize.return_value = 1
+    #     task_queue_mock.get_nowait.side_effect = lambda: (task_mock, 'fake_action_name')
+    #
+    #     logger_mock = mock.Mock()
+    #     notification_pusher.logger = logger_mock
+    #
+    #     getattr_mock = mock.Mock(side_effect=getattr_fake)
+    #     with mock.patch('__builtin__.getattr', getattr_mock):
+    #         notification_pusher.done_with_processed_tasks(task_queue_mock)
+    #     self.assertEqual(getattr_mock.call_count, 1)
+
+
+
+
+
+
