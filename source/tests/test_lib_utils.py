@@ -105,6 +105,27 @@ class UtilsTestCase(unittest.TestCase):
             return_value = utils.check_network_status('check_utl', 3)
             self.assertFalse(return_value)
 
+
+    # def test(self):
+    #     args = ['--config', './config',
+    #             '--pid', './pidfile',
+    #             '--daemon']
+    #     parser_mock = mock.MagicMock()
+    #     argparse_mock = mock.Mock()
+    #     argparse_mock.ArgumentParser.return_value = parser_mock
+    #     utils.parse_cmd_args(args=args)
+    #
+    #     with mock.patch('source.lib.utils.argparse', argparse_mock):
+    #         utils.parse_cmd_args(args=args)
+    #     calls = parser_mock.add_argument.call_args_list
+    #
+    #     for call in calls:
+    #         args, kwargs = call
+    #         print args
+    #     print args
+    #     assert False
+
+
     def test_parse_cmd_args_correct_all_params(self):
         args = ['--config', './config',
                 '--pid', './pidfile',
