@@ -1,13 +1,17 @@
 # coding: utf-8
 import unittest
 import mock
+import signal
 from source import notification_pusher
 from requests import RequestException
 from gevent import queue as gevent_queue
 
 
-def execfile_fake(filepath, variables):
+def execfile_fake_for_correct(filepath, variables):
     variables['KEY'] = 'value'
+
+
+def execfile_fake_for_incorrect(filepath, variables):
     variables['key'] = 'VALUE'
     variables['Key'] = 'Value'
     variables['kEY'] = 'value'
@@ -27,14 +31,14 @@ class NotificationPusherTestCase(unittest.TestCase):
 
     def test_daemonize_pid_not_zero(self):
         os_exit_mock = mock.Mock()
-        pid = 139           # pid != 0
+        pid = 139  # pid != 0
         with mock.patch('os.fork', mock.Mock(return_value=pid)), \
              mock.patch('os._exit', os_exit_mock, create=True):
             notification_pusher.daemonize()
         os_exit_mock.assert_called_once_with(0)
 
     def test_daemonize_pid_zero_then_not_zero(self):
-        pid = [0, 724]      # pid == 0 and pid != 0
+        pid = [0, 724]  # pid == 0 and pid != 0
         os_exit_mock = mock.Mock()
         os_fork_mock = mock.Mock()
         os_fork_mock.side_effect = pid
@@ -45,14 +49,13 @@ class NotificationPusherTestCase(unittest.TestCase):
             notification_pusher.daemonize()
         os_exit_mock.assert_called_once_with(0)
 
-    def test_daemonize_pid_alvays_zero(self):
+    def test_daemonize_pid_always_zero(self):
         os_exit_mock = mock.Mock()
         os_fork_mock = mock.Mock(return_value=0)  # pid is always zero
         with mock.patch('os.fork', os_fork_mock), \
              mock.patch('os._exit', os_exit_mock), \
              mock.patch('os.setsid', mock.Mock()):
-            notification_pusher.daemonize()
-        self.assertEqual(os_exit_mock.call_count, 0)
+            self.assertRaises(Exception, notification_pusher.daemonize)
 
     def test_daemonize_raise_os_error_exception(self):
         os_fork_mock = mock.Mock(side_effect=OSError(0, 'Test exception'))
@@ -65,14 +68,20 @@ class NotificationPusherTestCase(unittest.TestCase):
              mock.patch('os.setsid', mock.Mock(), create=True):
             self.assertRaises(Exception, notification_pusher.daemonize)
 
-    # Плохой тест! Разнести по разным тестам стоит
-    def test_load_config_from_pyfile(self):
+    def test_load_config_from_pyfile_correct(self):
         config_mock = mock.Mock()
-        execfile_mock = mock.Mock(side_effect=execfile_fake)
+        execfile_mock = mock.Mock(side_effect=execfile_fake_for_correct)
         with mock.patch('source.notification_pusher.Config', config_mock), \
              mock.patch('__builtin__.execfile', execfile_mock):
             return_cfg = notification_pusher.load_config_from_pyfile('filepath')
         self.assertEqual(return_cfg.KEY, 'value')
+
+    def test_load_config_from_pyfile_uncorrect(self):
+        config_mock = mock.Mock()
+        execfile_mock = mock.Mock(side_effect=execfile_fake_for_incorrect)
+        with mock.patch('source.notification_pusher.Config', config_mock), \
+             mock.patch('__builtin__.execfile', execfile_mock):
+            return_cfg = notification_pusher.load_config_from_pyfile('filepath')
         self.assertNotEqual(return_cfg.key, 'VALUE')
         self.assertNotEqual(return_cfg.Key, 'value')
         self.assertNotEqual(return_cfg.kEY, 'value')
@@ -85,7 +94,7 @@ class NotificationPusherTestCase(unittest.TestCase):
         logger_mock = mock.Mock()
         notification_pusher.logger = logger_mock
 
-        with mock.patch('requests.post', mock.Mock()),\
+        with mock.patch('requests.post', mock.Mock()), \
              mock.patch('json.dumps', mock.Mock()):
             notification_pusher.notification_worker(task_mock, task_queue_mock)
 
@@ -98,7 +107,7 @@ class NotificationPusherTestCase(unittest.TestCase):
         logger_mock = mock.Mock()
         notification_pusher.logger = logger_mock
 
-        with mock.patch('requests.post', mock.Mock(side_effect=RequestException('Test exception'))),\
+        with mock.patch('requests.post', mock.Mock(side_effect=RequestException('Test exception'))), \
              mock.patch('json.dumps', mock.Mock()):
             notification_pusher.notification_worker(task_mock, task_queue_mock)
 
@@ -126,8 +135,6 @@ class NotificationPusherTestCase(unittest.TestCase):
         notification_pusher.done_with_processed_tasks(task_queue_mock)
         self.assertEqual(logger_mock.debug.call_count, 1)
 
-
-    # Объяснить
     def test_done_with_processed_tasks(self):
         task_mock = mock.Mock()
         task_queue_mock = mock.Mock()
@@ -140,15 +147,46 @@ class NotificationPusherTestCase(unittest.TestCase):
         notification_pusher.done_with_processed_tasks(task_queue_mock)
         self.assertEqual(logger_mock.debug.call_count, 2)
 
+    def test_install_signal_handlers(self):
+        gevent_mock = mock.Mock()
+        with mock.patch('gevent.signal', gevent_mock):
+            notification_pusher.install_signal_handlers()
 
-    # Супер тест! Проверил работу моков и покрыл ветвь. Великолепно!
-    def test_main_loop(self):
-        config_mock = mock.MagicMock()
+        stop_handler = notification_pusher.stop_handler
+        gevent_mock.assert_any_call(signal.SIGTERM, stop_handler, signal.SIGTERM)
+        gevent_mock.assert_any_call(signal.SIGINT, stop_handler, signal.SIGINT)
+        gevent_mock.assert_any_call(signal.SIGHUP, stop_handler, signal.SIGHUP)
+        gevent_mock.assert_any_call(signal.SIGQUIT, stop_handler, signal.SIGQUIT)
+
+    def test_parse_cmd_args_correct_all_params(self):
+        args = ['--config', './config',
+                '--pid', './pidfile',
+                '--daemon']
+        parser = notification_pusher.parse_cmd_args(args)
+        self.assertEqual(parser.config, './config',)
+        self.assertEqual(parser.pidfile, './pidfile',)
+        self.assertTrue(parser.daemon)
+
+    def test_parse_cmd_args_with_config(self):
+        args = ['--config', './config']
+        parser = notification_pusher.parse_cmd_args(args)
+        self.assertEqual(parser.config, './config',)
+        self.assertIsNone(parser.pidfile)
+        self.assertFalse(parser.daemon)
+
+    def test_parse_cmd_args_without_config(self):
+        sys_exit_mock = mock.Mock()
+        with mock.patch('sys.exit', sys_exit_mock):
+            notification_pusher.parse_cmd_args([])
+        sys_exit_mock.assert_called_once_with(2)
+
+    def test_stop_handler(self):
         logger_mock = mock.Mock()
-        queue_mock = mock.Mock()
-        gevent_queue_mock = mock.Mock()
+        signum = 100
+        offset = 128
         notification_pusher.logger = logger_mock
-        with mock.patch('tarantool_queue.Queue', queue_mock), \
-             mock.patch('gevent.queue.Queue', gevent_queue_mock):
-            notification_pusher.run_application = False
-            notification_pusher.main_loop(config_mock)
+        notification_pusher.stop_handler(signum)
+        exit_code = notification_pusher.exit_code
+        run_application = notification_pusher.run_application
+        self.assertFalse(run_application)
+        self.assertEqual(exit_code, signum + offset)
