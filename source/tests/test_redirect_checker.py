@@ -51,7 +51,7 @@ class RedirectCheckerTestCase(unittest.TestCase):
         mock_active_children = mock.Mock()
         with patch('source.redirect_checker.check_network_status', mock_check_network_status),\
              patch('source.redirect_checker.spawn_workers', mock_spawn_workers),\
-             patch('source.redirect_checker.active_children', mock.Mock(return_value=[mock_active_children]*4)),\
+             patch('source.redirect_checker.active_children', mock.Mock(return_value=[mock_active_children]*config.WORKER_POOL_SIZE)),\
              patch('source.redirect_checker.sleep', mock_stop_cycle):
             redirect_checker.main_loop(config)
             self.assertEqual(mock_spawn_workers.call_count, 0)
