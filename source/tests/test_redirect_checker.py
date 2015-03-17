@@ -30,7 +30,7 @@ class RedirectCheckerTestCase(unittest.TestCase):
             self.assertEqual(mock_spawn_workers.call_count, 0)
             redirect_checker.loop = True
 
-    def test_main_loop_check_network_status_ok(self):
+    def test_main_loop_check_network_status_ok_and_workers_number_ok(self):
         mock_stop_cycle = mock.Mock(side_effect=stop_cycle)
         mock_check_network_status = mock.Mock(return_value=True)
         mock_spawn_workers = mock.Mock()
@@ -41,6 +41,20 @@ class RedirectCheckerTestCase(unittest.TestCase):
              patch('source.redirect_checker.sleep', mock_stop_cycle):
             redirect_checker.main_loop(config)
             self.assertIsNot(mock_spawn_workers.call_count, 0)
+            redirect_checker.loop = True
+
+
+    def test_main_loop_check_network_status_ok_and_workers_number_bad(self):
+        mock_stop_cycle = mock.Mock(side_effect=stop_cycle)
+        mock_check_network_status = mock.Mock(return_value=True)
+        mock_spawn_workers = mock.Mock()
+        mock_active_children = mock.Mock()
+        with patch('source.redirect_checker.check_network_status', mock_check_network_status),\
+             patch('source.redirect_checker.spawn_workers', mock_spawn_workers),\
+             patch('source.redirect_checker.active_children', mock.Mock(return_value=[mock_active_children]*4)),\
+             patch('source.redirect_checker.sleep', mock_stop_cycle):
+            redirect_checker.main_loop(config)
+            self.assertEqual(mock_spawn_workers.call_count, 0)
             redirect_checker.loop = True
 
     def test_main_check_args_is_daemon_and_pidfile(self):
