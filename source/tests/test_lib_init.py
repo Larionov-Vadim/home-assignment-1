@@ -34,6 +34,7 @@ class InitTestCase(unittest.TestCase):
         return_str = init.fix_market_url(url)
         self.assertEqual(return_str, 'http://play.google.com/store/apps/fuuu')
 
+
     def test_make_pycurl_request_set_user_agent(self):
         to_str_mock = mock.Mock(return_value='prepared_url_fake')
         init.to_str = to_str_mock
@@ -89,6 +90,7 @@ class InitTestCase(unittest.TestCase):
              patch('source.lib.to_unicode', mock.Mock(return_value=initial_redirect_url)):
             return_content, return_redirect_url = init.make_pycurl_request('fake_url', timeout=1)
         self.assertEqual(return_redirect_url, initial_redirect_url)
+
 
     def test_get_redirect_history_mm_or_ok_domain(self):
         prepare_url_mock = mock.Mock(return_value='mm_or_ok_fake_domain')
@@ -160,6 +162,7 @@ class InitTestCase(unittest.TestCase):
         self.assertEqual(ret_hist_urls, ['fake_domain', 'stop_loop'])
         self.assertEqual(ret_counters, 1234)
 
+
     def test_get_counters_empty_content(self):
         content = ''
         waiting_result_counters = []
@@ -173,6 +176,7 @@ class InitTestCase(unittest.TestCase):
         waiting_result_counters = ['GOOGLE_ANALYTICS']
         result = init.get_counters(content)
         self.assertEqual(waiting_result_counters, result)
+
 
     def test_check_for_meta_with_empty_content_and_no_http_equiv(self):
         content = ''
@@ -222,9 +226,3 @@ class InitTestCase(unittest.TestCase):
         # waiting_result_counters = None
         #     result = init.prepare_url(url)
         #     self.assertEqual(waiting_result_counters, result)
-
-
-
-
-
-
