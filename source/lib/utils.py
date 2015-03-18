@@ -27,6 +27,8 @@ def daemonize():
 
         if pid > 0:
             os._exit(0)
+        else:
+            raise Exception('pid == 0')
     else:
         os._exit(0)
 
