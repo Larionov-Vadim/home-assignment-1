@@ -3,7 +3,7 @@ import unittest
 import mock
 import signal
 import tarantool
-from mock import patch
+from mock import patch, Mock
 from source import notification_pusher
 from requests import RequestException
 from gevent import queue as gevent_queue
@@ -49,58 +49,53 @@ class NotificationPusherTestCase(unittest.TestCase):
 
 
     def test_daemonize_pid_not_zero(self):
-        os_exit_mock = mock.Mock()
+        os_exit_mock = Mock()
         pid = 139  # pid != 0
         with patch('os.fork', mock.Mock(return_value=pid)), \
-             patch('os._exit', os_exit_mock, create=True):
+             patch('os._exit', os_exit_mock ):
             notification_pusher.daemonize()
         os_exit_mock.assert_called_once_with(0)
 
     def test_daemonize_pid_zero_then_not_zero(self):
         pid = [0, 724]  # pid == 0 and pid != 0
-        os_exit_mock = mock.Mock()
-        os_fork_mock = mock.Mock()
-        os_fork_mock.side_effect = pid
-
-        with patch('os.fork', os_fork_mock), \
+        os_exit_mock = Mock()
+        with patch('os.fork', Mock(side_effect=pid)), \
              patch('os._exit', os_exit_mock), \
              patch('os.setsid', mock.Mock()):
             notification_pusher.daemonize()
         os_exit_mock.assert_called_once_with(0)
 
     def test_daemonize_pid_always_zero(self):
-        os_exit_mock = mock.Mock()
-        os_fork_mock = mock.Mock(return_value=0)  # pid is always zero
-        with patch('os.fork', os_fork_mock), \
-             patch('os._exit', os_exit_mock), \
+        pid = 0   # pid is always zero
+        with patch('os.fork', Mock(return_value=pid)), \
+             patch('os._exit', Mock()), \
              patch('os.setsid', mock.Mock()):
             self.assertRaises(Exception, notification_pusher.daemonize)
 
     def test_daemonize_raise_os_error_exception(self):
-        os_fork_mock = mock.Mock(side_effect=OSError(0, 'Test exception'))
+        os_fork_mock = Mock(side_effect=OSError(0, 'Test exception'))
         with patch('os.fork', os_fork_mock, create=True):
             self.assertRaises(Exception, notification_pusher.daemonize)
 
     def test_daemonize_pid_zero_then_raise_os_error_exception(self):
-        os_fork_mock = mock.Mock(side_effect=[0, OSError(0, 'Test exception')])
+        os_fork_mock = Mock(side_effect=[0, OSError(0, 'Test exception')])
         with patch('os.fork', os_fork_mock, create=True), \
-             patch('os.setsid', mock.Mock(), create=True):
+             patch('os.setsid', Mock(), create=True):
             self.assertRaises(Exception, notification_pusher.daemonize)
 
 
     def test_load_config_from_pyfile_correct(self):
-        config_mock = mock.Mock()
-        execfile_mock = mock.Mock(side_effect=execfile_fake_for_correct)
+        config_mock = Mock()
+        execfile_mock = Mock(side_effect=execfile_fake_for_correct)
         with patch('source.notification_pusher.Config', config_mock), \
              patch('__builtin__.execfile', execfile_mock):
             return_cfg = notification_pusher.load_config_from_pyfile('filepath')
         self.assertEqual(return_cfg.KEY, 'value')
 
     def test_load_config_from_pyfile_uncorrect(self):
-        config_mock = mock.Mock()
-        execfile_mock = mock.Mock(side_effect=execfile_fake_for_incorrect)
-        with mock.patch('source.notification_pusher.Config', config_mock), \
-             mock.patch('__builtin__.execfile', execfile_mock):
+        execfile_mock = Mock(side_effect=execfile_fake_for_incorrect)
+        with patch('source.notification_pusher.Config', Mock()), \
+             patch('__builtin__.execfile', execfile_mock):
             return_cfg = notification_pusher.load_config_from_pyfile('filepath')
         self.assertNotEqual(return_cfg.key, 'VALUE')
         self.assertNotEqual(return_cfg.Key, 'value')
@@ -110,69 +105,61 @@ class NotificationPusherTestCase(unittest.TestCase):
 
     def test_notification_worker(self):
         task_mock = mock.MagicMock()
-        task_queue_mock = mock.Mock()
-        logger_mock = mock.Mock()
-        notification_pusher.logger = logger_mock
-        with patch('requests.post', mock.Mock()), \
-             patch('json.dumps', mock.Mock()):
+        task_queue_mock = Mock()
+        with patch('requests.post', Mock()), \
+             patch('json.dumps', Mock()), \
+             patch('source.notification_pusher.logger', Mock()):
             notification_pusher.notification_worker(task_mock, task_queue_mock)
-
         task_queue_mock.put.assert_called_once_with((task_mock, 'ack'))
 
     def test_notification_worker_with_request_exception(self):
         task_mock = mock.MagicMock()
         task_queue_mock = mock.Mock()
-        logger_mock = mock.Mock()
-        notification_pusher.logger = logger_mock
         with patch('requests.post', mock.Mock(side_effect=RequestException('Test exception'))), \
-             patch('json.dumps', mock.Mock()):
+             patch('json.dumps', mock.Mock()), \
+             patch('source.notification_pusher.logger', Mock()):
             notification_pusher.notification_worker(task_mock, task_queue_mock)
-
         task_queue_mock.put.assert_called_once_with((task_mock, 'bury'))
 
 
     def test_done_with_processed_tasks_empty_queue_raise_exception(self):
-        task_queue_mock = mock.Mock()
+        task_queue_mock = Mock()
         task_queue_mock.qsize.return_value = 1
         task_queue_mock.get_nowait.side_effect = gevent_queue.Empty('Test exception')
-        logger_mock = mock.Mock()
-        notification_pusher.logger = logger_mock
-        self.assertRaises(gevent_queue.Empty, notification_pusher.done_with_processed_tasks(task_queue_mock))
+        with patch('source.notification_pusher.logger', Mock()):
+            self.assertRaises(gevent_queue.Empty, notification_pusher.done_with_processed_tasks(task_queue_mock))
 
     def test_done_with_processed_tasks_qsize_zero(self):
         task_queue_mock = mock.Mock()
         task_queue_mock.qsize.return_value = 0
-        logger_mock = mock.Mock()
-        notification_pusher.logger = logger_mock
-        notification_pusher.done_with_processed_tasks(task_queue_mock)
+        logger_mock = Mock()
+        with patch('source.notification_pusher.logger', logger_mock):
+            notification_pusher.done_with_processed_tasks(task_queue_mock)
         self.assertEqual(logger_mock.debug.call_count, 1)
 
     def test_done_with_processed_tasks_correct(self):
-        task_mock = mock.Mock()
-        task_queue_mock = mock.Mock()
+        task_mock = Mock()
+        task_queue_mock = Mock()
         task_queue_mock.qsize.return_value = 1
         task_queue_mock.get_nowait.side_effect = lambda: (task_mock, 'fake_action')
-        logger_mock = mock.Mock()
-        notification_pusher.logger = logger_mock
-        notification_pusher.done_with_processed_tasks(task_queue_mock)
+        with patch('source.notification_pusher.logger', Mock()):
+            notification_pusher.done_with_processed_tasks(task_queue_mock)
         task_mock.fake_action.assert_called_once_with()
 
     def test_done_with_processed_tasks_raise_tarantool_databaseerror_exception(self):
-        task_mock = mock.Mock()
+        task_mock = Mock()
         task_mock.fake_action.side_effect = tarantool.DatabaseError('AAA')
-        task_queue_mock = mock.Mock()
+        task_queue_mock = Mock()
         task_queue_mock.qsize.return_value = 1
         task_queue_mock.get_nowait.side_effect = lambda: (task_mock, 'fake_action')
-        logger_mock = mock.Mock()
-        notification_pusher.logger = logger_mock
-        self.assertRaises(tarantool.DatabaseError, notification_pusher.done_with_processed_tasks(task_queue_mock))
+        with patch('source.notification_pusher.logger', Mock()):
+            self.assertRaises(tarantool.DatabaseError, notification_pusher.done_with_processed_tasks(task_queue_mock))
 
 
     def test_install_signal_handlers(self):
-        gevent_mock = mock.Mock()
+        gevent_mock = Mock()
         with patch('gevent.signal', gevent_mock):
             notification_pusher.install_signal_handlers()
-
         stop_handler = notification_pusher.stop_handler
         gevent_mock.assert_any_call(signal.SIGTERM, stop_handler, signal.SIGTERM)
         gevent_mock.assert_any_call(signal.SIGINT, stop_handler, signal.SIGINT)
@@ -182,8 +169,8 @@ class NotificationPusherTestCase(unittest.TestCase):
 
     def test_parse_cmd_args_check_add_requared_config_argument(self):
         args = ['--config', './config']
-        parser_mock = mock.Mock()
-        argparse_mock = mock.Mock()
+        parser_mock = Mock()
+        argparse_mock = Mock()
         argparse_mock.ArgumentParser.return_value = parser_mock
         with patch('source.notification_pusher.argparse', argparse_mock):
             notification_pusher.parse_cmd_args(args=args)
@@ -197,8 +184,8 @@ class NotificationPusherTestCase(unittest.TestCase):
     def test_parse_cmd_args_check_add_daemon_argument(self):
         args = ['--config', './config',
                 '--daemon']
-        parser_mock = mock.Mock()
-        argparse_mock = mock.Mock()
+        parser_mock = Mock()
+        argparse_mock = Mock()
         argparse_mock.ArgumentParser.return_value = parser_mock
         with patch('source.notification_pusher.argparse', argparse_mock):
             notification_pusher.parse_cmd_args(args=args)
@@ -212,8 +199,8 @@ class NotificationPusherTestCase(unittest.TestCase):
     def test_parse_cmd_args_check_add_pidfile_argument_default(self):
         args = ['--config', './config',
                 '--daemon']
-        parser_mock = mock.Mock()
-        argparse_mock = mock.Mock()
+        parser_mock = Mock()
+        argparse_mock = Mock()
         argparse_mock.ArgumentParser.return_value = parser_mock
         with patch('source.notification_pusher.argparse', argparse_mock):
             notification_pusher.parse_cmd_args(args=args)
@@ -227,8 +214,8 @@ class NotificationPusherTestCase(unittest.TestCase):
     def test_parse_cmd_args_check_parse_args_has_been_called(self):
         args = ['--config', './config',
                 '--pid', './pidfile']
-        parser_mock = mock.Mock()
-        argparse_mock = mock.Mock()
+        parser_mock = Mock()
+        argparse_mock = Mock()
         argparse_mock.ArgumentParser.return_value = parser_mock
         with patch('source.notification_pusher.argparse', argparse_mock):
             notification_pusher.parse_cmd_args(args=args)
@@ -236,11 +223,10 @@ class NotificationPusherTestCase(unittest.TestCase):
 
 
     def test_stop_handler(self):
-        logger_mock = mock.Mock()
         signum = 100
         offset = 128
-        notification_pusher.logger = logger_mock
-        notification_pusher.stop_handler(signum)
+        with patch('source.notification_pusher.logger', Mock()):
+            notification_pusher.stop_handler(signum)
         exit_code = notification_pusher.exit_code
         run_application = notification_pusher.run_application
         self.assertFalse(run_application)
@@ -318,7 +304,8 @@ class NotificationPusherTestCase(unittest.TestCase):
              patch('source.notification_pusher.main_loop', mock.Mock(side_effect=Exception)),\
              patch('source.notification_pusher.os.path.realpath', mock.Mock()),\
              patch('source.notification_pusher.os.path.expanduser', mock.Mock()),\
-             patch('source.notification_pusher.sleep', mock_stop_cycle):
+             patch('source.notification_pusher.sleep', mock_stop_cycle),\
+             patch('source.notification_pusher.logger', Mock()):
             return_exitcode = notification_pusher.main(args)
             self.assertEqual(return_exitcode, exit_code)
             self.assertRaises(Exception)

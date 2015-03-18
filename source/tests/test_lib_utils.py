@@ -4,7 +4,7 @@ import mock
 import socket
 from source.lib import utils
 from urllib2 import URLError
-from mock import patch
+from mock import patch, Mock
 
 
 def execfile_fake_for_correct(filepath, variables):
@@ -20,41 +20,39 @@ def execfile_fake_for_incorrect(filepath, variables):
 
 class UtilsTestCase(unittest.TestCase):
     def test_daemonize_pid_not_zero(self):
-        os_exit_mock = mock.Mock()
+        os_exit_mock = Mock()
         pid = 127           # pid != 0
-        with patch('os.fork', mock.Mock(return_value=pid)), \
+        with patch('os.fork', Mock(return_value=pid)), \
              patch('os._exit', os_exit_mock, create=True):
             utils.daemonize()
         os_exit_mock.assert_called_once_with(0)
 
     def test_daemonize_pid_zero_then_not_zero(self):
         pid = [0, 630]      # pid == 0 and pid != 0
-        os_exit_mock = mock.Mock()
-        os_fork_mock = mock.Mock()
-        os_fork_mock.side_effect = pid
-        with patch('os.fork', os_fork_mock), \
+        os_exit_mock = Mock()
+        with patch('os.fork', Mock(side_effect=pid)), \
              patch('os._exit', os_exit_mock), \
              patch('os.setsid', mock.Mock()):
             utils.daemonize()
         os_exit_mock.assert_called_once_with(0)
 
     def test_daemonize_pid_always_zero(self):
-        os_exit_mock = mock.Mock()
-        os_fork_mock = mock.Mock(return_value=0)  # pid is always zero
-        with patch('os.fork', os_fork_mock), \
+        os_exit_mock = Mock()
+        pid = 0                 # pid is always zero
+        with patch('os.fork', Mock(return_value=pid)), \
              patch('os._exit', os_exit_mock), \
              patch('os.setsid', mock.Mock()):
             self.assertRaises(Exception, utils.daemonize)
 
     def test_daemonize_raise_os_error_exception(self):
-        os_fork_mock = mock.Mock(side_effect=OSError(0, 'Test exception'))
-        with patch('os.fork', os_fork_mock, create=True):
+        os_fork_mock = Mock(side_effect=OSError(0, 'Test exception'))
+        with patch('os.fork', os_fork_mock):
             self.assertRaises(Exception, utils.daemonize)
 
     def test_daemonize_pid_zero_then_raise_os_error_exception(self):
-        os_fork_mock = mock.Mock(side_effect=[0, OSError(0, 'Test exception')])
-        with patch('os.fork', os_fork_mock, create=True), \
-             patch('os.setsid', mock.Mock(), create=True):
+        os_fork_mock = Mock(side_effect=[0, OSError(0, 'Test exception')])
+        with patch('os.fork', os_fork_mock), \
+             patch('os.setsid', Mock()):
             self.assertRaises(Exception, utils.daemonize)
 
 
@@ -64,22 +62,21 @@ class UtilsTestCase(unittest.TestCase):
         with patch('source.lib.utils.open', m_open, create=True), \
              patch('os.getpid', mock.Mock(return_value=pid)):
                 utils.create_pidfile('/file/path')
-
         m_open.assert_called_once_with('/file/path', 'w')
         m_open().write.assert_called_once_with(str(pid))
 
 
     def test_load_config_from_pyfile_correct(self):
-        config_mock = mock.Mock()
-        execfile_mock = mock.Mock(side_effect=execfile_fake_for_correct)
+        config_mock = Mock()
+        execfile_mock = Mock(side_effect=execfile_fake_for_correct)
         with patch('source.lib.utils.Config', config_mock), \
              patch('__builtin__.execfile', execfile_mock):
             return_cfg = utils.load_config_from_pyfile('filepath')
         self.assertEqual(return_cfg.KEY, 'value')
 
     def test_load_config_from_pyfile_uncorrect(self):
-        config_mock = mock.Mock()
-        execfile_mock = mock.Mock(side_effect=execfile_fake_for_incorrect)
+        config_mock = Mock()
+        execfile_mock = Mock(side_effect=execfile_fake_for_incorrect)
         with patch('source.lib.utils.Config', config_mock), \
              patch('__builtin__.execfile', execfile_mock):
             return_cfg = utils.load_config_from_pyfile('filepath')
@@ -90,30 +87,30 @@ class UtilsTestCase(unittest.TestCase):
 
 
     def test_check_network_status_correct(self):
-        with patch('urllib2.urlopen', mock.Mock):
+        with patch('urllib2.urlopen', Mock):
             return_value = utils.check_network_status('check_utl', 3)
             self.assertTrue(return_value)
 
     def test_check_network_status_URLError(self):
-        with patch('urllib2.urlopen', mock.Mock(side_effect=URLError('Test exception'))):
+        with patch('urllib2.urlopen', Mock(side_effect=URLError('Test exception'))):
             return_value = utils.check_network_status('check_utl', 3)
             self.assertFalse(return_value)
 
     def test_check_network_status_raise_socket_error_exception(self):
-        with patch('urllib2.urlopen', mock.Mock(side_effect=socket.error)):
+        with patch('urllib2.urlopen', Mock(side_effect=socket.error)):
             return_value = utils.check_network_status('check_utl', 3)
             self.assertFalse(return_value)
 
     def test_check_network_status_raise_ValueError_exception(self):
-        with patch('urllib2.urlopen', mock.Mock(side_effect=ValueError)):
+        with patch('urllib2.urlopen', Mock(side_effect=ValueError)):
             return_value = utils.check_network_status('check_utl', 3)
             self.assertFalse(return_value)
 
 
     def test_parse_cmd_args_check_add_requared_config_argument(self):
         args = ['--config', './config']
-        parser_mock = mock.Mock()
-        argparse_mock = mock.Mock()
+        parser_mock = Mock()
+        argparse_mock = Mock()
         argparse_mock.ArgumentParser.return_value = parser_mock
         with patch('source.lib.utils.argparse', argparse_mock):
             utils.parse_cmd_args(args=args)
@@ -127,8 +124,8 @@ class UtilsTestCase(unittest.TestCase):
     def test_parse_cmd_args_check_add_daemon_argument(self):
         args = ['--config', './config',
                 '--daemon']
-        parser_mock = mock.Mock()
-        argparse_mock = mock.Mock()
+        parser_mock = Mock()
+        argparse_mock = Mock()
         argparse_mock.ArgumentParser.return_value = parser_mock
         with patch('source.lib.utils.argparse', argparse_mock):
             utils.parse_cmd_args(args=args)
@@ -142,8 +139,8 @@ class UtilsTestCase(unittest.TestCase):
     def test_parse_cmd_args_check_add_pidfile_argument_default(self):
         args = ['--config', './config',
                 '--daemon']
-        parser_mock = mock.Mock()
-        argparse_mock = mock.Mock()
+        parser_mock = Mock()
+        argparse_mock = Mock()
         argparse_mock.ArgumentParser.return_value = parser_mock
         with patch('source.lib.utils.argparse', argparse_mock):
             utils.parse_cmd_args(args=args)
@@ -157,8 +154,8 @@ class UtilsTestCase(unittest.TestCase):
     def test_parse_cmd_args_check_parse_args_has_been_called(self):
         args = ['--config', './config',
                 '--pid', './pidfile']
-        parser_mock = mock.Mock()
-        argparse_mock = mock.Mock()
+        parser_mock = Mock()
+        argparse_mock = Mock()
         argparse_mock.ArgumentParser.return_value = parser_mock
         with patch('source.lib.utils.argparse', argparse_mock):
             utils.parse_cmd_args(args=args)
@@ -166,7 +163,7 @@ class UtilsTestCase(unittest.TestCase):
 
 
     def test_spawn_workers(self):
-        p_mock = mock.Mock()
+        p_mock = Mock()
         with patch('source.lib.utils.Process', mock.Mock(return_value=p_mock)):
             utils.spawn_workers(1, 'target', [], 0)
         self.assertTrue(p_mock.daemon)
@@ -175,7 +172,7 @@ class UtilsTestCase(unittest.TestCase):
 
     def test_get_tube__tube_has_been_called(self):
         queue_mock = mock.MagicMock()
-        tarantool_queue_mock = mock.Mock(return_value=queue_mock)
+        tarantool_queue_mock = Mock(return_value=queue_mock)
         with patch('source.lib.utils.tarantool_queue.Queue', tarantool_queue_mock):
             utils.get_tube('host', 8080, 'space', 'name')
         queue_mock.tube.assert_called_once_with('name')
