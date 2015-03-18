@@ -175,17 +175,26 @@ class InitTestCase(unittest.TestCase):
         result = init.get_counters(content)
         self.assertEqual(waiting_result_counters, result)
 
-    def test_check_for_meta_with_empty_content(self):
+    def test_check_for_meta_with_empty_content_and_no_http_equiv(self):
         content = ''
         url = 'url'
         waiting_result_counters = None
         result = init.check_for_meta(content, url)
         self.assertEqual(waiting_result_counters, result)
 
-    def test_check_for_meta_content_ok_and_http_equiv_ok(self):
+    def test_check_for_meta_content_ok_and_no_http_equiv(self):
         url = 'url'
         content = '<html><body>' \
-                  '<meta content="one;two" http-equiv="refresh">'\
+                  '<meta content="one;two">'\
+                  '</body></html>'
+        waiting_result_counters = None
+        result = init.check_for_meta(content, url)
+        self.assertEqual(waiting_result_counters, result)
+
+    def test_check_for_meta_content_ok_and_http_equiv_bad(self):
+        url = 'url'
+        content = '<html><body>' \
+                  '<meta content="one;two" http-equiv="no refresh">'\
                   '</body></html>'
         waiting_result_counters = None
         result = init.check_for_meta(content, url)
@@ -200,21 +209,23 @@ class InitTestCase(unittest.TestCase):
         result = init.check_for_meta(content, url)
         self.assertEqual(waiting_result_counters, result)
 
-    def test_check_for_meta_content_bad_and_no_http_equiv(self):
+    def test_check_for_meta_content_ok_and_http_equiv_ok(self):
         url = 'url'
         content = '<html><body>' \
-                  '<meta content="one">'\
+                  '<meta content="one;two" http-equiv="refresh">'\
                   '</body></html>'
         waiting_result_counters = None
         result = init.check_for_meta(content, url)
         self.assertEqual(waiting_result_counters, result)
 
-    def test_check_for_meta_content_bad_and_http_equiv_bad(self):
-        url = 'url'
-        content = '<html><body>' \
-                  '<meta content="one" http-equiv="no refresh">'\
-                  '</body></html>'
-        waiting_result_counters = None
-        result = init.check_for_meta(content, url)
-        self.assertEqual(waiting_result_counters, result)
+    # def test_prepare_url_with_none_url(self):
+    #     url = None
+    #     waiting_result_counters = None
+    #     result = init.prepare_url(url)
+    #     self.assertEqual(waiting_result_counters, result)
+
+
+
+
+
 
