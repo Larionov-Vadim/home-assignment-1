@@ -5,8 +5,8 @@ from mock import patch
 import source.lib as init
 
 
-def get_url_fake(url, timeout, user_agent=None):
-    if url == 'first':
+def get_url_fake(url, timeout, user_agent):
+    if url == 'fake_domain':
         return 'stop_loop', 'fake_redirect_type', 'fake_content_1'
     if url == 'stop_loop':
         return None, 'fake_redirect_type_2', 'fake_content_2'
@@ -142,24 +142,23 @@ class InitTestCase(unittest.TestCase):
         self.assertEqual(ret_hist_urls, ['fake_domain', 'fake_redirect_url'])
         self.assertEqual(ret_counters, 1234)
 
-    # def test_get_redirect_history(self):
-    #     prepare_url_mock = mock.Mock(return_value='fake_domain')
-    #     init.prepare_url = prepare_url_mock
-    #
-    #     get_counters_mock = mock.Mock(return_value=1234)
-    #     init.get_counters = get_counters_mock
-    #     get_url_mock = mock.MagicMock(side_effect=get_url_fake)
-    #
-    #     init.get_url = get_url_mock
-    #     with patch('source.lib.re.match', mock.Mock(return_value=False)),\
-    #          patch('__builtin__.str', mock.Mock(return_value=1)):
-    #
-    #         ret_hist_types, ret_hist_urls, ret_counters \
-    #             = init.get_redirect_history('fake_domain', timeout=1, max_redirects=-1)
-    #     self.assertEqual(ret_hist_types, ['fake_redirect_type'])
-    #     self.assertEqual(ret_hist_urls, ['fake_domain', 'first'])
-    #     self.assertEqual(ret_counters, 1234)
+    def test_get_redirect_history_with_two_iteration(self):
+        prepare_url_mock = mock.Mock(return_value='fake_domain')
+        init.prepare_url = prepare_url_mock
 
+        get_counters_mock = mock.Mock(return_value=1234)
+        init.get_counters = get_counters_mock
+
+        get_url_mock = mock.Mock(side_effect=get_url_fake)
+        init.get_url = get_url_mock
+
+        with patch('source.lib.re.match', mock.Mock(return_value=False)),\
+             patch('__builtin__.str', mock.Mock(return_value=1)):
+            ret_hist_types, ret_hist_urls, ret_counters \
+                = init.get_redirect_history('fake_domain', timeout=1)
+        self.assertEqual(ret_hist_types, ['fake_redirect_type'])
+        self.assertEqual(ret_hist_urls, ['fake_domain', 'stop_loop'])
+        self.assertEqual(ret_counters, 1234)
 
     def test_get_counters_empty_content(self):
         content = ''
@@ -169,7 +168,7 @@ class InitTestCase(unittest.TestCase):
 
     def test_get_counters_not_empty_content(self):
         content = '<html><body>' \
-                  '<script async="" src="https://ssl.google-analytics.com/ga.js"></script>'\
+                  '<script async="" src="https://ssl.google-analytics.com/ga.js"></script>' \
                   '</body></html>'
         waiting_result_counters = ['GOOGLE_ANALYTICS']
         result = init.get_counters(content)
@@ -185,7 +184,7 @@ class InitTestCase(unittest.TestCase):
     def test_check_for_meta_content_ok_and_no_http_equiv(self):
         url = 'url'
         content = '<html><body>' \
-                  '<meta content="one;two">'\
+                  '<meta content="one;two">' \
                   '</body></html>'
         waiting_result_counters = None
         result = init.check_for_meta(content, url)
@@ -194,7 +193,7 @@ class InitTestCase(unittest.TestCase):
     def test_check_for_meta_content_ok_and_http_equiv_bad(self):
         url = 'url'
         content = '<html><body>' \
-                  '<meta content="one;two" http-equiv="no refresh">'\
+                  '<meta content="one;two" http-equiv="no refresh">' \
                   '</body></html>'
         waiting_result_counters = None
         result = init.check_for_meta(content, url)
@@ -203,7 +202,7 @@ class InitTestCase(unittest.TestCase):
     def test_check_for_meta_content_bad_and_http_equiv_ok(self):
         url = 'url'
         content = '<html><body>' \
-                  '<meta content="one" http-equiv="refresh">'\
+                  '<meta content="one" http-equiv="refresh">' \
                   '</body></html>'
         waiting_result_counters = None
         result = init.check_for_meta(content, url)
@@ -212,17 +211,17 @@ class InitTestCase(unittest.TestCase):
     def test_check_for_meta_content_ok_and_http_equiv_ok(self):
         url = 'url'
         content = '<html><body>' \
-                  '<meta content="one;two" http-equiv="refresh">'\
+                  '<meta content="one;two" http-equiv="refresh">' \
                   '</body></html>'
         waiting_result_counters = None
         result = init.check_for_meta(content, url)
         self.assertEqual(waiting_result_counters, result)
 
-    # def test_prepare_url_with_none_url(self):
-    #     url = None
-    #     waiting_result_counters = None
-    #     result = init.prepare_url(url)
-    #     self.assertEqual(waiting_result_counters, result)
+        # def test_prepare_url_with_none_url(self):
+        # url = None
+        # waiting_result_counters = None
+        #     result = init.prepare_url(url)
+        #     self.assertEqual(waiting_result_counters, result)
 
 
 

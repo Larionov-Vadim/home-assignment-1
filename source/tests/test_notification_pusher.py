@@ -2,24 +2,28 @@
 import unittest
 import mock
 import signal
+import tarantool
 from mock import patch
 from source import notification_pusher
 from requests import RequestException
 from gevent import queue as gevent_queue
 from source.lib.utils import Config
-from tarantool_queue import Queue
+
 
 def stop_cycle(self):
     notification_pusher.run_application = False
 
+
 def execfile_fake_for_correct(filepath, variables):
     variables['KEY'] = 'value'
+
 
 def execfile_fake_for_incorrect(filepath, variables):
     variables['key'] = 'VALUE'
     variables['Key'] = 'Value'
     variables['kEY'] = 'value'
     variables['_KEY'] = '_value'
+
 
 config = Config()
 config = mock.Mock()
@@ -30,6 +34,7 @@ config.WORKER_POOL_SIZE = 4
 config.QUEUE_TAKE_TIMEOUT = 1
 config.SLEEP_ON_FAIL = 0
 config.SLEEP = 1
+
 
 class NotificationPusherTestCase(unittest.TestCase):
     def test_create_pidfile_example(self):
@@ -148,17 +153,27 @@ class NotificationPusherTestCase(unittest.TestCase):
         notification_pusher.done_with_processed_tasks(task_queue_mock)
         self.assertEqual(logger_mock.debug.call_count, 1)
 
-    def test_done_with_processed_tasks(self):
+    def test_done_with_processed_tasks_correct(self):
         task_mock = mock.Mock()
         task_queue_mock = mock.Mock()
         task_queue_mock.qsize.return_value = 1
-        task_queue_mock.get_nowait.side_effect = lambda: (task_mock, 'fake_action_name')
-
+        task_queue_mock.get_nowait.side_effect = lambda: (task_mock, 'fake_action')
         logger_mock = mock.Mock()
         notification_pusher.logger = logger_mock
 
         notification_pusher.done_with_processed_tasks(task_queue_mock)
-        self.assertEqual(logger_mock.debug.call_count, 2)
+        task_mock.fake_action.assert_called_once_with()
+
+    def test_done_with_processed_tasks_raise_tarantool_databaseerror_exception(self):
+        task_mock = mock.Mock()
+        task_mock.fake_action.side_effect = tarantool.DatabaseError('AAA')
+        task_queue_mock = mock.Mock()
+        task_queue_mock.qsize.return_value = 1
+        task_queue_mock.get_nowait.side_effect = lambda: (task_mock, 'fake_action')
+
+        logger_mock = mock.Mock()
+        notification_pusher.logger = logger_mock
+        self.assertRaises(tarantool.DatabaseError, notification_pusher.done_with_processed_tasks(task_queue_mock))
 
     def test_install_signal_handlers(self):
         gevent_mock = mock.Mock()
