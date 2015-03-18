@@ -233,7 +233,12 @@ class NotificationPusherTestCase(unittest.TestCase):
         self.assertEqual(exit_code, signum + offset)
 
 
-    def test_main_check_args_is_daemon_and_pidfile(self):
+    def test_main_with_uncorrect_tupe_of_parametr(self):
+        uncorrect_args = 100
+        with self.assertRaises(TypeError):
+            notification_pusher.main(uncorrect_args)
+
+    def test_main_check_is_daemon_and_pidfile(self):
         args = mock.MagicMock()
         args.daemon = True
         args.pidfile = True
@@ -287,7 +292,6 @@ class NotificationPusherTestCase(unittest.TestCase):
             self.assertEqual(mock_create_pidfile.call_count, 0)
             notification_pusher.run_application = True
 
-
     def test_main_main_loop_bad(self):
         args = mock.MagicMock()
         args.daemon = False
@@ -310,6 +314,12 @@ class NotificationPusherTestCase(unittest.TestCase):
             self.assertEqual(return_exitcode, exit_code)
             self.assertRaises(Exception)
             notification_pusher.run_application = True
+
+
+    def test_main_loop_with_uncorrect_tupe_of_parametr(self):
+        uncorrect_config = 'everything bad'
+        with self.assertRaises(AttributeError):
+            notification_pusher.main_loop(uncorrect_config)
 
     def test_main_loop_no_free_workers_count(self):
         config.WORKER_POOL_SIZE = 0
