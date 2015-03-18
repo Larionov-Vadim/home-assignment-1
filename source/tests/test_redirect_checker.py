@@ -63,6 +63,12 @@ class RedirectCheckerTestCase(unittest.TestCase):
             redirect_checker.loop = True
 
 
+    def test_main_with_uncorrect_tupe_of_parametr(self):
+        uncorrect_args = 100
+        with self.assertRaises(TypeError):
+            redirect_checker.main(uncorrect_args)
+
+
     def test_main_check_args_is_daemon_and_pidfile(self):
         args = mock.MagicMock()
         args.daemon = True
