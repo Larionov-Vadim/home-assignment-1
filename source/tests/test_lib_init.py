@@ -45,7 +45,8 @@ class InitTestCase(unittest.TestCase):
              patch('source.lib.StringIO', Mock(return_value=buff_mock)), \
              patch('source.lib.to_str', Mock(return_value='prepared_url_fake')):
             init.make_pycurl_request('fake_url', timeout=1, useragent='test_user_agent')
-        curl_mock.setopt.asser_called_with('curl_user_agent_option', 'test_user_agent')
+        expected_call = mock.call('curl_user_agent_option', 'test_user_agent')
+        curl_mock.setopt.assert_has_calls(expected_call)
 
     def test_make_pycurl_request_set_timeout(self):
         buff_mock = mock.Mock()
