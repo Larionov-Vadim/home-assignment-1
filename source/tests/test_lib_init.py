@@ -219,3 +219,18 @@ class InitTestCase(unittest.TestCase):
         prepare_url_mock.assert_called_once_with(None)
         self.assertIsNone(ret_type)
         self.assertEqual(ret_content, 'fake_content')
+
+
+    def test_prepare_url_with_none_url(self):
+        url = None
+        waiting_result = None
+        result = init.prepare_url(url)
+        self.assertEqual(waiting_result, result)
+
+    def test_prepare_url_url_is_ok(self):
+        url = 'https://github.com/'
+        mock_urlunparse = mock.Mock()
+        with patch('source.lib.urlunparse', mock_urlunparse):
+            result = init.prepare_url(url)
+        self.assertIsNot(mock_urlunparse.called, 0)
+
