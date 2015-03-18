@@ -1,3 +1,4 @@
+
 import unittest
 import mock
 from mock import patch
@@ -18,6 +19,11 @@ config.EXIT_CODE = 31
 
 
 class RedirectCheckerTestCase(unittest.TestCase):
+
+    def test_main_loop_with_uncorrect_tupe_of_parametr(self):
+        uncorrect_config = 'everything bad'
+        with self.assertRaises(AttributeError):
+            redirect_checker.main_loop(uncorrect_config)
 
     def test_main_loop_check_network_status_bad(self):
         mock_stop_cycle = mock.Mock(side_effect=stop_cycle)
@@ -43,7 +49,6 @@ class RedirectCheckerTestCase(unittest.TestCase):
             self.assertIsNot(mock_spawn_workers.call_count, 0)
             redirect_checker.loop = True
 
-
     def test_main_loop_check_network_status_ok_and_workers_number_bad(self):
         mock_stop_cycle = mock.Mock(side_effect=stop_cycle)
         mock_check_network_status = mock.Mock(return_value=True)
@@ -56,6 +61,7 @@ class RedirectCheckerTestCase(unittest.TestCase):
             redirect_checker.main_loop(config)
             self.assertEqual(mock_spawn_workers.call_count, 0)
             redirect_checker.loop = True
+
 
     def test_main_check_args_is_daemon_and_pidfile(self):
         args = mock.MagicMock()
