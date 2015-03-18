@@ -7,6 +7,7 @@ from source import notification_pusher
 from requests import RequestException
 from gevent import queue as gevent_queue
 from source.lib.utils import Config
+from tarantool_queue import Queue
 
 def stop_cycle(self):
     notification_pusher.run_application = False
@@ -21,12 +22,14 @@ def execfile_fake_for_incorrect(filepath, variables):
     variables['_KEY'] = '_value'
 
 config = Config()
-config.CHECK_URL = 'url'
-config.HTTP_TIMEOUT = 1
+config = mock.Mock()
+config.QUEUE_HOST = 'localhost'
+config.QUEUE_PORT = 31
+config.QUEUE_SPACE = 0
 config.WORKER_POOL_SIZE = 4
-config.SLEEP_ON_FAIL = 1
-config.LOGGING = 'logging'
-config.EXIT_CODE = 31
+config.QUEUE_TAKE_TIMEOUT = 1
+config.SLEEP_ON_FAIL = 0
+config.SLEEP = 1
 
 class NotificationPusherTestCase(unittest.TestCase):
     def test_create_pidfile_example(self):
@@ -276,4 +279,39 @@ class NotificationPusherTestCase(unittest.TestCase):
             return_exitcode = notification_pusher.main(args)
             self.assertEqual(return_exitcode, exit_code)
             self.assertRaises(Exception)
+            notification_pusher.run_application = True
+
+
+    def test_main_loop_no_free_workers_count(self):
+        config.WORKER_POOL_SIZE = 0
+        mock_take = mock.Mock()
+        mock_stop_cycle = mock.Mock(side_effect=stop_cycle)
+        with patch('source.notification_pusher.sleep', mock_stop_cycle),\
+             patch('tarantool_queue.tarantool_queue.Tube.take', mock_take):
+            notification_pusher.main_loop(config)
+            self.assertFalse(mock_take.called)
+            notification_pusher.run_application = True
+
+    def test_main_loop_with_free_workers_count_and_task_ok(self):
+        config.WORKER_POOL_SIZE = 4
+        mock_take = mock.Mock()
+        mock_greenlet = mock.MagicMock()
+        mock_stop_cycle = mock.Mock(side_effect=stop_cycle)
+        with patch('source.notification_pusher.sleep', mock_stop_cycle),\
+             patch('source.notification_pusher.Greenlet', mock_greenlet),\
+             patch('tarantool_queue.tarantool_queue.Tube.take', mock_take):
+            notification_pusher.main_loop(config)
+            self.assertTrue(mock_greenlet.called)
+            notification_pusher.run_application = True
+
+    def test_main_loop_with_free_workers_count_and_task_bad(self):
+        config.WORKER_POOL_SIZE = 4
+        mock_take = mock.Mock(return_value=False)
+        mock_greenlet = mock.MagicMock()
+        mock_stop_cycle = mock.Mock(side_effect=stop_cycle)
+        with patch('source.notification_pusher.sleep', mock_stop_cycle),\
+             patch('source.notification_pusher.Greenlet', mock_greenlet),\
+             patch('tarantool_queue.tarantool_queue.Tube.take', mock_take):
+            notification_pusher.main_loop(config)
+            self.assertFalse(mock_greenlet.called)
             notification_pusher.run_application = True
