@@ -159,3 +159,19 @@ class InitTestCase(unittest.TestCase):
     #     self.assertEqual(ret_hist_types, ['fake_redirect_type'])
     #     self.assertEqual(ret_hist_urls, ['fake_domain', 'first'])
     #     self.assertEqual(ret_counters, 1234)
+
+
+    def test_get_counters_empty_content(self):
+        content = ''
+        waiting_result_counters = []
+        result = init.get_counters(content)
+        self.assertEqual(waiting_result_counters, result)
+
+    def test_get_counters_not_empty_content(self):
+        content = '<html><body>' \
+                  '<script async="" src="https://ssl.google-analytics.com/ga.js"></script>'\
+                  '</body></html>'
+        waiting_result_counters = ['GOOGLE_ANALYTICS']
+        result = init.get_counters(content)
+        self.assertEqual(waiting_result_counters, result)
+
