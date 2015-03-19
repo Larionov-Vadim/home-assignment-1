@@ -24,7 +24,6 @@ class WorkerTestCase(unittest.TestCase):
             result = worker.get_redirect_history_from_task(mock_task, timeout)
             self.assertEqual(result, waiting_result)
 
-    #maybe it is unnecessary
     def test_get_redirect_history_from_task_error_not_in_history_and_is_not_recheck(self):
         timeout = 1
         url = 'url'
@@ -91,10 +90,11 @@ class WorkerTestCase(unittest.TestCase):
             self.assertEqual(result, waiting_result)
 
 
-    # def test_worker_bad_pid(self):
-    #     config = mock.MagicMock()
-    #     pid = 'Mily-V'
-    #     self.assertRaises(Exception, worker.worker(config, pid))
+    def test_worker_bad_pid(self):
+        config = mock.MagicMock()
+        pid = 'Mily-V'
+        with self.assertRaises(Exception):
+            worker.worker(config, pid)
 
     def test_worker_task_path_is_not_exists(self):
         config = mock.MagicMock()
@@ -144,7 +144,7 @@ class WorkerTestCase(unittest.TestCase):
              patch('source.lib.worker.get_redirect_history_from_task', mock_get_redirect_history_from_task):
             worker.worker(config, pid)
             self.assertEqual(mock_input_tube.put.call_count, 0)
-            self.assertIsNot(mock_output_tube.put.call_count, 0)
+            self.assertGreater(mock_output_tube.put.call_count, 0)
 
     def test_worker_is_input_ok(self):
         config = mock.MagicMock()
@@ -156,7 +156,7 @@ class WorkerTestCase(unittest.TestCase):
              patch('source.lib.worker.get_tube', mock.Mock(side_effect=[mock_input_tube, mock_output_tube])),\
              patch('source.lib.worker.get_redirect_history_from_task', mock_get_redirect_history_from_task):
             worker.worker(config, pid)
-            self.assertIsNot(mock_input_tube.put.call_count, 0)
+            self.assertGreater(mock_input_tube.put.call_count, 0)
             self.assertEqual(mock_output_tube.put.call_count, 0)
 
     def test_worker_task_with_DataBaseException(self):
