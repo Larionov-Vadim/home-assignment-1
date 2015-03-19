@@ -235,8 +235,9 @@ class InitTestCase(unittest.TestCase):
 
     def test_prepare_url_url_is_ok(self):
         url = 'https://github.com/'
-        mock_urlunparse = mock.Mock()
+        mock_urlunparse = mock.Mock(return_value='smth')
+        waiting_result = 'smth'
         with patch('source.lib.urlunparse', mock_urlunparse):
             result = init.prepare_url(url)
             self.assertGreater(mock_urlunparse.called, 0)
-            #self.assertEqual(result, url)
+            self.assertEqual(result, waiting_result)
