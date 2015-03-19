@@ -63,7 +63,6 @@ def load_config_from_pyfile(filepath):
     return cfg
 
 
-
 def parse_cmd_args(args, app_description=''):
     """
     Разбирает аргументы командной строки.

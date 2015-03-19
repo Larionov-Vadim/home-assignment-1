@@ -37,71 +37,6 @@ config.SLEEP = 1
 
 
 class NotificationPusherTestCase(unittest.TestCase):
-    def test_create_pidfile(self):
-        pid = 42
-        m_open = mock.mock_open()
-        with patch('source.notification_pusher.open', m_open, create=True),\
-             patch('os.getpid', mock.Mock(return_value=pid)):
-                notification_pusher.create_pidfile('/file/path')
-        m_open.assert_called_once_with('/file/path', 'w')
-        m_open().write.assert_called_once_with(str(pid))
-
-
-    def test_daemonize_pid_not_zero(self):
-        os_exit_mock = Mock()
-        pid = 139  # pid != 0
-        with patch('os.fork', mock.Mock(return_value=pid)), \
-             patch('os._exit', os_exit_mock):
-            notification_pusher.daemonize()
-        os_exit_mock.assert_called_once_with(0)
-
-    def test_daemonize_pid_zero_then_not_zero(self):
-        pid = [0, 724]  # pid == 0 and pid != 0
-        os_exit_mock = Mock()
-        with patch('os.fork', Mock(side_effect=pid)), \
-             patch('os._exit', os_exit_mock), \
-             patch('os.setsid', Mock()):
-            notification_pusher.daemonize()
-        os_exit_mock.assert_called_once_with(0)
-
-    def test_daemonize_pid_always_zero(self):
-        pid = 0   # pid is always zero
-        with patch('os.fork', Mock(return_value=pid)), \
-             patch('os._exit', Mock()), \
-             patch('os.setsid', mock.Mock()):
-            self.assertRaises(Exception, notification_pusher.daemonize)
-
-    def test_daemonize_raise_os_error_exception(self):
-        os_fork_mock = Mock(side_effect=OSError(0, 'Test exception'))
-        with patch('os.fork', os_fork_mock, create=True):
-            self.assertRaises(Exception, notification_pusher.daemonize)
-
-    def test_daemonize_pid_zero_then_raise_os_error_exception(self):
-        os_fork_mock = Mock(side_effect=[0, OSError(0, 'Test exception')])
-        with patch('os.fork', os_fork_mock, create=True), \
-             patch('os.setsid', Mock(), create=True):
-            self.assertRaises(Exception, notification_pusher.daemonize)
-
-
-    def test_load_config_from_pyfile_positive_test(self):
-        config_mock = Mock()
-        execfile_mock = Mock(side_effect=execfile_fake_for_correct)
-        with patch('source.notification_pusher.Config', config_mock), \
-             patch('__builtin__.execfile', execfile_mock):
-            return_cfg = notification_pusher.load_config_from_pyfile('filepath')
-        self.assertEqual(return_cfg.KEY, 'value')
-
-    def test_load_config_from_pyfile_negative_test(self):
-        execfile_mock = Mock(side_effect=execfile_fake_for_incorrect)
-        with patch('source.notification_pusher.Config', Mock()), \
-             patch('__builtin__.execfile', execfile_mock):
-            return_cfg = notification_pusher.load_config_from_pyfile('filepath')
-        self.assertNotEqual(return_cfg.key, 'VALUE')
-        self.assertNotEqual(return_cfg.Key, 'value')
-        self.assertNotEqual(return_cfg.kEY, 'value')
-        self.assertNotEqual(return_cfg._KEY, 'value')
-
-
     def test_notification_worker(self):
         task_mock = mock.MagicMock()
         task_queue_mock = Mock()
@@ -168,37 +103,6 @@ class NotificationPusherTestCase(unittest.TestCase):
         gevent_mock.assert_any_call(signal.SIGQUIT, stop_handler, signal.SIGQUIT)
 
 
-    def test_parse_cmd_args_with_config(self):
-        args = ['--config', './config']
-        parser = notification_pusher.parse_cmd_args(args)
-        self.assertEqual(parser.config, './config',)
-        self.assertIsNone(parser.pidfile)
-        self.assertFalse(parser.daemon)
-
-    def test_parse_cmd_args_without_config(self):
-        sys_exit_mock = mock.Mock()
-        with mock.patch('sys.exit', sys_exit_mock):
-            notification_pusher.parse_cmd_args([])
-        sys_exit_mock.assert_called_once_with(2)
-
-    def test_parse_cmd_args_check_add_daemon_argument(self):
-        args = ['--config', './config',
-                 '--pid', './pidfile',
-                 '--daemon']
-        parser = notification_pusher.parse_cmd_args(args)
-        self.assertEqual(parser.config, './config')
-        self.assertEqual(parser.pidfile, './pidfile')
-        self.assertTrue(parser.daemon)
-
-    def test_parse_cmd_args_check_add_pidfile(self):
-        args = ['--config', './config',
-                 '--pid', './pidfile']
-        parser = notification_pusher.parse_cmd_args(args)
-        self.assertEqual(parser.config, './config')
-        self.assertEqual(parser.pidfile, './pidfile')
-        self.assertFalse(parser.daemon)
-
-
     def test_stop_handler(self):
         signum = 100
         offset = 128
@@ -224,10 +128,10 @@ class NotificationPusherTestCase(unittest.TestCase):
         mock_parse_cmd_args = mock.Mock(return_value=args)
         mock_daemonize = mock.Mock()
         mock_create_pidfile = mock.Mock()
-        with patch('source.notification_pusher.parse_cmd_args', mock_parse_cmd_args),\
-             patch('source.notification_pusher.daemonize', mock_daemonize),\
-             patch('source.notification_pusher.create_pidfile', mock_create_pidfile),\
-             patch('source.notification_pusher.load_config_from_pyfile', mock_load_config_from_pyfile),\
+        with patch('source.lib.utils.parse_cmd_args', mock_parse_cmd_args),\
+             patch('source.lib.utils.daemonize', mock_daemonize),\
+             patch('source.lib.utils.create_pidfile', mock_create_pidfile),\
+             patch('source.lib.utils.load_config_from_pyfile', mock_load_config_from_pyfile),\
              patch('source.notification_pusher.main_preparation', mock.Mock()),\
              patch('source.notification_pusher.main_run', mock.Mock()),\
              patch('source.notification_pusher.os.path.realpath', mock.Mock()),\
@@ -247,10 +151,10 @@ class NotificationPusherTestCase(unittest.TestCase):
         mock_parse_cmd_args = mock.Mock(return_value=args)
         mock_daemonize = mock.Mock()
         mock_create_pidfile = mock.Mock()
-        with patch('source.notification_pusher.parse_cmd_args', mock_parse_cmd_args),\
-             patch('source.notification_pusher.daemonize', mock_daemonize),\
-             patch('source.notification_pusher.create_pidfile', mock_create_pidfile),\
-             patch('source.notification_pusher.load_config_from_pyfile', mock_load_config_from_pyfile),\
+        with patch('source.lib.utils.parse_cmd_args', mock_parse_cmd_args),\
+             patch('source.lib.utils.daemonize', mock_daemonize),\
+             patch('source.lib.utils.create_pidfile', mock_create_pidfile),\
+             patch('source.lib.utils.load_config_from_pyfile', mock_load_config_from_pyfile),\
              patch('source.notification_pusher.main_preparation', mock.Mock()),\
              patch('source.notification_pusher.main_run', mock.Mock()),\
              patch('source.notification_pusher.os.path.realpath', mock.Mock()),\

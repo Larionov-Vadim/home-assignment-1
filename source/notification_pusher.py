@@ -9,6 +9,7 @@ import signal
 import sys
 from logging.config import dictConfig
 from threading import current_thread
+from lib import utils
 
 import gevent
 from gevent import Greenlet
@@ -181,96 +182,11 @@ def main_loop(config):
         logger.info('Stop application loop.')
 
 
-def parse_cmd_args(args):
-    """
-    Разбирает аргументы командной строки.
-
-    :param args: список аргументов
-    :type args: list
-
-    :rtype: argparse.Namespace
-    """
-    parser = argparse.ArgumentParser(
-        description='Push notifications daemon.'
-    )
-    parser.add_argument(
-        '-c',
-        '--config',
-        dest='config',
-        required=True,
-        help='Path to configuration file.'
-    )
-    parser.add_argument(
-        '-d',
-        '--daemon',
-        dest='daemon',
-        action='store_true',
-        help='Daemonize process.'
-    )
-    parser.add_argument(
-        '-P',
-        '--pid',
-        dest='pidfile',
-        help='Path to pidfile.'
-    )
-
-    return parser.parse_args(args=args)
-
-
-def daemonize():
-    """
-    Демонизирует текущий процесс.
-    """
-    try:
-        pid = os.fork()
-    except OSError as exc:
-        raise Exception("%s [%d]" % (exc.strerror, exc.errno))
-
-    if pid == 0:
-        os.setsid()
-
-        try:
-            pid = os.fork()
-        except OSError as exc:
-            raise Exception("%s [%d]" % (exc.strerror, exc.errno))
-
-        if pid > 0:
-            os._exit(0)
-        else:
-            raise Exception('pid == 0')
-    else:
-        os._exit(0)
-
-
 class Config(object):
     """
     Класс для хранения настроек приложения.
     """
     pass
-
-
-def load_config_from_pyfile(filepath):
-    """
-    Создает Config объект из py файла и загружает в него настройки.
-
-    Используются только camel-case переменные.
-
-    :param filepath: путь до py файла с настройками
-    :type filepath: basestring
-
-    :rtype: Config
-    """
-    cfg = Config()
-
-    variables = {}
-
-    execfile(filepath, variables)
-
-    for key, value in variables.iteritems():
-        if key.isupper():
-            setattr(cfg, key, value)
-
-    return cfg
 
 
 def install_signal_handlers():
@@ -283,12 +199,6 @@ def install_signal_handlers():
         gevent.signal(signum, stop_handler, signum)
 
 
-def create_pidfile(pidfile_path):
-    pid = str(os.getpid())
-    with open(pidfile_path, 'w') as f:
-        f.write(pid)
-
-
 def main(argv):
     """
     Точка входа в приложение.
@@ -298,15 +208,15 @@ def main(argv):
     :param argv: агрументы командной строки.
     :type argv: list
     """
-    args = parse_cmd_args(argv[1:])
+    args = utils.parse_cmd_args(argv[1:])
 
     if args.daemon:
-        daemonize()
+        utils.daemonize()
 
     if args.pidfile:
-        create_pidfile(args.pidfile)
+        utils.create_pidfile(args.pidfile)
 
-    config = load_config_from_pyfile(
+    config = utils.load_config_from_pyfile(
         os.path.realpath(os.path.expanduser(args.config))
     )
 

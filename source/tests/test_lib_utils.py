@@ -111,7 +111,6 @@ class UtilsTestCase(unittest.TestCase):
             self.assertFalse(actual_result)
 
 
-
     def test_parse_cmd_args_with_config(self):
         args = ['--config', './config']
         parser = utils.parse_cmd_args(args)
