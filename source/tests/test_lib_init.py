@@ -241,3 +241,17 @@ class InitTestCase(unittest.TestCase):
             result = init.prepare_url(url)
             self.assertGreater(mock_urlunparse.called, 0)
             self.assertEqual(result, waiting_result)
+
+    def test_prepare_url_exception(self):
+        url = 'https://github.com/'
+        mock_netloc = mock.Mock()
+        mock_netloc.encode.side_effect = UnicodeError
+        mock_urlunparse = mock.Mock(return_value='smth')
+        waiting_result = 'smth'
+        with mock.patch("source.lib.urlparse", mock.Mock(return_value=(None, mock_netloc, None, None, None, None))),\
+             mock.patch("source.lib.quote", mock.Mock()),\
+             mock.patch("source.lib.quote_plus", mock.Mock()),\
+             mock.patch("source.lib.urlunparse", mock_urlunparse):
+            result = init.prepare_url(url)
+            self.assertEqual(result, waiting_result)
+            self.assertRaises(UnicodeError)

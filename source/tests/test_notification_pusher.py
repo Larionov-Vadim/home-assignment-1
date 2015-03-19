@@ -214,3 +214,13 @@ class NotificationPusherTestCase(unittest.TestCase):
             notification_pusher.main_loop(config)
             self.assertFalse(mock_greenlet.called)
             notification_pusher.run_application = True
+
+    def test_main_main_preparation_ok(self):
+       with patch('source.notification_pusher.dictConfig', mock.Mock()):
+           notification_pusher.main_preparation(config)
+
+    def test_main_main_preparation_bad(self):
+       uncorrect_config = 'smth bad'
+       with patch('source.notification_pusher.dictConfig', mock.Mock()):
+           with self.assertRaises(AttributeError):
+               notification_pusher.main_preparation(uncorrect_config)
