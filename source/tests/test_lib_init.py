@@ -175,13 +175,13 @@ class InitTestCase(unittest.TestCase):
 
     def test_check_for_meta_with_empty_content_and_no_http_equiv(self):
         content = ''
-        url = 'url'
+        url = 'https://github.com/'
         waiting_result_counters = None
         result = init.check_for_meta(content, url)
         self.assertEqual(waiting_result_counters, result)
 
     def test_check_for_meta_content_ok_and_no_http_equiv(self):
-        url = 'url'
+        url = 'https://github.com/'
         content = '<html><body>' \
                   '<meta content="one;two">' \
                   '</body></html>'
@@ -190,7 +190,7 @@ class InitTestCase(unittest.TestCase):
         self.assertEqual(waiting_result_counters, result)
 
     def test_check_for_meta_content_ok_and_http_equiv_bad(self):
-        url = 'url'
+        url = 'https://github.com/'
         content = '<html><body>' \
                   '<meta content="one;two" http-equiv="no refresh">' \
                   '</body></html>'
@@ -199,7 +199,7 @@ class InitTestCase(unittest.TestCase):
         self.assertEqual(waiting_result_counters, result)
 
     def test_check_for_meta_content_bad_and_http_equiv_ok(self):
-        url = 'url'
+        url = 'https://github.com/'
         content = '<html><body>' \
                   '<meta content="one" http-equiv="refresh">' \
                   '</body></html>'
@@ -208,7 +208,7 @@ class InitTestCase(unittest.TestCase):
         self.assertEqual(waiting_result_counters, result)
 
     def test_check_for_meta_content_ok_and_http_equiv_ok(self):
-        url = 'url'
+        url = 'https://github.com/'
         content = '<html><body>' \
                   '<meta content="one;two" http-equiv="refresh">' \
                   '</body></html>'
