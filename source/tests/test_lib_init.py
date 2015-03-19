@@ -260,7 +260,7 @@ class InitTestCase(unittest.TestCase):
         self.assertIsNone(actual_type)
         self.assertEqual(actual_content, expected_content)
 
-    def test_get_url(self):
+    def test_get_url_with_new_redirect_url(self):
         url = 'http://fake.url.com'
         expected_type = init.REDIRECT_HTTP
         expected_content = 'fake content'
