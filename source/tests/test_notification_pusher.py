@@ -40,10 +40,9 @@ class NotificationPusherTestCase(unittest.TestCase):
     def test_create_pidfile(self):
         pid = 42
         m_open = mock.mock_open()
-        with patch('source.notification_pusher.open', m_open, create=True):
-            with mock.patch('os.getpid', mock.Mock(return_value=pid)):
+        with patch('source.notification_pusher.open', m_open, create=True),\
+             patch('os.getpid', mock.Mock(return_value=pid)):
                 notification_pusher.create_pidfile('/file/path')
-
         m_open.assert_called_once_with('/file/path', 'w')
         m_open().write.assert_called_once_with(str(pid))
 
@@ -169,59 +168,35 @@ class NotificationPusherTestCase(unittest.TestCase):
         gevent_mock.assert_any_call(signal.SIGQUIT, stop_handler, signal.SIGQUIT)
 
 
-    def test_parse_cmd_args_check_add_requared_config_argument(self):
+    def test_parse_cmd_args_with_config(self):
         args = ['--config', './config']
-        parser_mock = Mock()
-        argparse_mock = Mock()
-        argparse_mock.ArgumentParser.return_value = parser_mock
-        with patch('source.notification_pusher.argparse', argparse_mock):
-            notification_pusher.parse_cmd_args(args=args)
-        calls = parser_mock.add_argument.call_args_list
-        for call in calls:
-            args, kwargs = call
-            if '-c' in args and kwargs['required']:
-                return
-        assert False
+        parser = notification_pusher.parse_cmd_args(args)
+        self.assertEqual(parser.config, './config',)
+        self.assertIsNone(parser.pidfile)
+        self.assertFalse(parser.daemon)
+
+    def test_parse_cmd_args_without_config(self):
+        sys_exit_mock = mock.Mock()
+        with mock.patch('sys.exit', sys_exit_mock):
+            notification_pusher.parse_cmd_args([])
+        sys_exit_mock.assert_called_once_with(2)
 
     def test_parse_cmd_args_check_add_daemon_argument(self):
         args = ['--config', './config',
-                '--daemon']
-        parser_mock = Mock()
-        argparse_mock = Mock()
-        argparse_mock.ArgumentParser.return_value = parser_mock
-        with patch('source.notification_pusher.argparse', argparse_mock):
-            notification_pusher.parse_cmd_args(args=args)
-        calls = parser_mock.add_argument.call_args_list
-        for call in calls:
-            args, kwargs = call
-            if '--daemon' in args:
-                return
-        assert False
+                 '--pid', './pidfile',
+                 '--daemon']
+        parser = notification_pusher.parse_cmd_args(args)
+        self.assertEqual(parser.config, './config')
+        self.assertEqual(parser.pidfile, './pidfile')
+        self.assertTrue(parser.daemon)
 
-    def test_parse_cmd_args_check_add_pidfile_argument_default(self):
+    def test_parse_cmd_args_check_add_pidfile(self):
         args = ['--config', './config',
-                '--daemon']
-        parser_mock = Mock()
-        argparse_mock = Mock()
-        argparse_mock.ArgumentParser.return_value = parser_mock
-        with patch('source.notification_pusher.argparse', argparse_mock):
-            notification_pusher.parse_cmd_args(args=args)
-        calls = parser_mock.add_argument.call_args_list
-        for call in calls:
-            args, kwargs = call
-            if '--pid' in args:
-                return
-        assert False
-
-    def test_parse_cmd_args_check_parse_args_has_been_called(self):
-        args = ['--config', './config',
-                '--pid', './pidfile']
-        parser_mock = Mock()
-        argparse_mock = Mock()
-        argparse_mock.ArgumentParser.return_value = parser_mock
-        with patch('source.notification_pusher.argparse', argparse_mock):
-            notification_pusher.parse_cmd_args(args=args)
-        parser_mock.parse_args.assert_called_once_with(args=args)
+                 '--pid', './pidfile']
+        parser = notification_pusher.parse_cmd_args(args)
+        self.assertEqual(parser.config, './config')
+        self.assertEqual(parser.pidfile, './pidfile')
+        self.assertFalse(parser.daemon)
 
 
     def test_stop_handler(self):

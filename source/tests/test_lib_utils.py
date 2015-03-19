@@ -111,59 +111,35 @@ class UtilsTestCase(unittest.TestCase):
             self.assertFalse(actual_result)
 
 
-    def test_parse_cmd_args_check_add_requared_config_argument(self):
+    def test_parse_cmd_args_with_config(self):
         args = ['--config', './config']
-        parser_mock = Mock()
-        argparse_mock = Mock()
-        argparse_mock.ArgumentParser.return_value = parser_mock
-        with patch('source.lib.utils.argparse', argparse_mock):
-            utils.parse_cmd_args(args=args)
-        calls = parser_mock.add_argument.call_args_list
-        for call in calls:
-            args, kwargs = call
-            if '-c' in args and kwargs['required']:
-                return
-        assert False
+        parser = utils.parse_cmd_args(args)
+        self.assertEqual(parser.config, './config',)
+        self.assertIsNone(parser.pidfile)
+        self.assertFalse(parser.daemon)
+
+    def test_parse_cmd_args_without_config(self):
+        sys_exit_mock = mock.Mock()
+        with mock.patch('sys.exit', sys_exit_mock):
+            utils.parse_cmd_args([])
+        sys_exit_mock.assert_called_once_with(2)
 
     def test_parse_cmd_args_check_add_daemon_argument(self):
         args = ['--config', './config',
-                '--daemon']
-        parser_mock = Mock()
-        argparse_mock = Mock()
-        argparse_mock.ArgumentParser.return_value = parser_mock
-        with patch('source.lib.utils.argparse', argparse_mock):
-            utils.parse_cmd_args(args=args)
-        calls = parser_mock.add_argument.call_args_list
-        for call in calls:
-            args, kwargs = call
-            if '--daemon' in args:
-                return
-        assert False
+                 '--pid', './pidfile',
+                 '--daemon']
+        parser = utils.parse_cmd_args(args)
+        self.assertEqual(parser.config, './config')
+        self.assertEqual(parser.pidfile, './pidfile')
+        self.assertTrue(parser.daemon)
 
-    def test_parse_cmd_args_check_add_pidfile_argument_default(self):
+    def test_parse_cmd_args_check_add_pidfile(self):
         args = ['--config', './config',
-                '--daemon']
-        parser_mock = Mock()
-        argparse_mock = Mock()
-        argparse_mock.ArgumentParser.return_value = parser_mock
-        with patch('source.lib.utils.argparse', argparse_mock):
-            utils.parse_cmd_args(args=args)
-        calls = parser_mock.add_argument.call_args_list
-        for call in calls:
-            args, kwargs = call
-            if '--pid' in args:
-                return
-        assert False
-
-    def test_parse_cmd_args_check_parse_args_has_been_called(self):
-        args = ['--config', './config',
-                '--pid', './pidfile']
-        parser_mock = Mock()
-        argparse_mock = Mock()
-        argparse_mock.ArgumentParser.return_value = parser_mock
-        with patch('source.lib.utils.argparse', argparse_mock):
-            utils.parse_cmd_args(args=args)
-        parser_mock.parse_args.assert_called_once_with(args=args)
+                 '--pid', './pidfile']
+        parser = utils.parse_cmd_args(args)
+        self.assertEqual(parser.config, './config')
+        self.assertEqual(parser.pidfile, './pidfile')
+        self.assertFalse(parser.daemon)
 
 
     def test_spawn_workers_check_set_params(self):
