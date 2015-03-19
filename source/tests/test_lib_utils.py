@@ -18,6 +18,10 @@ def execfile_fake_for_incorrect(filepath, variables):
     variables['_KEY'] = '_value'
 
 
+def target_fake_func(args):
+    pass
+
+
 class UtilsTestCase(unittest.TestCase):
     def test_daemonize_pid_not_zero(self):
         os_exit_mock = Mock()
@@ -66,7 +70,7 @@ class UtilsTestCase(unittest.TestCase):
         m_open().write.assert_called_once_with(str(pid))
 
 
-    def test_load_config_from_pyfile_correct(self):
+    def test_load_config_from_pyfile_positive_test(self):
         config_mock = Mock()
         execfile_mock = Mock(side_effect=execfile_fake_for_correct)
         with patch('source.lib.utils.Config', config_mock), \
@@ -74,7 +78,7 @@ class UtilsTestCase(unittest.TestCase):
             return_cfg = utils.load_config_from_pyfile('filepath')
         self.assertEqual(return_cfg.KEY, 'value')
 
-    def test_load_config_from_pyfile_uncorrect(self):
+    def test_load_config_from_pyfile_negative_test(self):
         config_mock = Mock()
         execfile_mock = Mock(side_effect=execfile_fake_for_incorrect)
         with patch('source.lib.utils.Config', config_mock), \
@@ -88,23 +92,23 @@ class UtilsTestCase(unittest.TestCase):
 
     def test_check_network_status_correct(self):
         with patch('urllib2.urlopen', Mock):
-            return_value = utils.check_network_status('check_utl', 3)
-            self.assertTrue(return_value)
+            actual_result = utils.check_network_status('check_utl', 3)
+            self.assertTrue(actual_result)
 
     def test_check_network_status_URLError(self):
         with patch('urllib2.urlopen', Mock(side_effect=URLError('Test exception'))):
-            return_value = utils.check_network_status('check_utl', 3)
-            self.assertFalse(return_value)
+            actual_result = utils.check_network_status('check_utl', 3)
+            self.assertFalse(actual_result)
 
     def test_check_network_status_raise_socket_error_exception(self):
         with patch('urllib2.urlopen', Mock(side_effect=socket.error)):
-            return_value = utils.check_network_status('check_utl', 3)
-            self.assertFalse(return_value)
+            actual_result = utils.check_network_status('check_utl', 3)
+            self.assertFalse(actual_result)
 
     def test_check_network_status_raise_ValueError_exception(self):
         with patch('urllib2.urlopen', Mock(side_effect=ValueError)):
-            return_value = utils.check_network_status('check_utl', 3)
-            self.assertFalse(return_value)
+            actual_result = utils.check_network_status('check_utl', 3)
+            self.assertFalse(actual_result)
 
 
     def test_parse_cmd_args_check_add_requared_config_argument(self):
@@ -162,17 +166,39 @@ class UtilsTestCase(unittest.TestCase):
         parser_mock.parse_args.assert_called_once_with(args=args)
 
 
-    def test_spawn_workers(self):
+    def test_spawn_workers_check_set_params(self):
+        parent_pid = 132
+        Process_mock = Mock()
+        with patch('source.lib.utils.Process', Process_mock):
+            utils.spawn_workers(1, target_fake_func, [], parent_pid)
+        Process_mock.assert_called_once_with(
+            target=target_fake_func,
+            args=[],
+            kwargs={'parent_pid': parent_pid}
+        )
+
+    def test_spawn_workers_with_one_iteration(self):
         p_mock = Mock()
         with patch('source.lib.utils.Process', mock.Mock(return_value=p_mock)):
-            utils.spawn_workers(1, 'target', [], 0)
+            utils.spawn_workers(1, target_fake_func, [], parent_pid=102)
         self.assertTrue(p_mock.daemon)
-        self.assertEqual(p_mock.start.call_count, 1)
+        p_mock.start.assert_called_once_with()
 
+
+    def test_get_tube_set_args(self):
+        fake_space = 7
+        tarantool_queue_mock = Mock()
+        with patch('source.lib.utils.tarantool_queue', tarantool_queue_mock):
+            utils.get_tube('fake_host', 8080, fake_space, 'fake_name')
+        tarantool_queue_mock.Queue.assert_called_once_with(
+            host='fake_host',
+            port=8080,
+            space=fake_space
+        )
 
     def test_get_tube__tube_has_been_called(self):
-        queue_mock = mock.MagicMock()
-        tarantool_queue_mock = Mock(return_value=queue_mock)
-        with patch('source.lib.utils.tarantool_queue.Queue', tarantool_queue_mock):
-            utils.get_tube('host', 8080, 'space', 'name')
+        fake_space = 0
+        queue_mock = Mock()
+        with patch('source.lib.utils.tarantool_queue.Queue', Mock(return_value=queue_mock)):
+            utils.get_tube('host', 8080, fake_space, 'name')
         queue_mock.tube.assert_called_once_with('name')
