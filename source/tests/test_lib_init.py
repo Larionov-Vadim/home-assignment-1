@@ -216,6 +216,15 @@ class InitTestCase(unittest.TestCase):
         result = init.check_for_meta(content, url)
         self.assertEqual(waiting_result_counters, result)
 
+    def test_check_for_meta_with_m(self):
+        url = 'https://github.com/'
+        content = '<html><body>' \
+                  '<meta content="one;url=two.html" http-equiv="refresh">'\
+                  '</body></html>'
+        waiting_result = 'https://github.com/two.html'
+        result = init.check_for_meta(content, url)
+        self.assertEqual(result, waiting_result)
+
 
     def test_get_url_without_redirects(self):
         expected_content = 'fake content'
