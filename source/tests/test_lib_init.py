@@ -233,5 +233,6 @@ class InitTestCase(unittest.TestCase):
         mock_urlunparse = mock.Mock()
         with patch('source.lib.urlunparse', mock_urlunparse):
             result = init.prepare_url(url)
-        self.assertIsNot(mock_urlunparse.called, 0)
+            self.assertGreater(mock_urlunparse.called, 0)
+            #self.assertEqual(result, url)
 
