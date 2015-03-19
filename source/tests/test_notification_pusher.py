@@ -247,18 +247,14 @@ class NotificationPusherTestCase(unittest.TestCase):
         mock_parse_cmd_args = mock.Mock(return_value=args)
         mock_daemonize = mock.Mock()
         mock_create_pidfile = mock.Mock()
-        mock_stop_cycle = mock.Mock(side_effect=stop_cycle)
         with patch('source.notification_pusher.parse_cmd_args', mock_parse_cmd_args),\
              patch('source.notification_pusher.daemonize', mock_daemonize),\
              patch('source.notification_pusher.create_pidfile', mock_create_pidfile),\
              patch('source.notification_pusher.load_config_from_pyfile', mock_load_config_from_pyfile),\
-             patch('source.notification_pusher.patch_all', mock.Mock()),\
-             patch('source.notification_pusher.install_signal_handlers', mock.Mock()),\
-             patch('source.notification_pusher.dictConfig', mock.Mock()),\
-             patch('source.notification_pusher.main_loop', mock.Mock(side_effect=mock_stop_cycle)),\
+             patch('source.notification_pusher.main_preparation', mock.Mock()),\
+             patch('source.notification_pusher.main_run', mock.Mock()),\
              patch('source.notification_pusher.os.path.realpath', mock.Mock()),\
-             patch('source.notification_pusher.os.path.expanduser', mock.Mock()),\
-             patch('source.notification_pusher.sleep', mock_stop_cycle):
+             patch('source.notification_pusher.os.path.expanduser', mock.Mock()):
             return_exitcode = notification_pusher.main(args)
             self.assertEqual(return_exitcode, exit_code)
             self.assertTrue(mock_daemonize.assert_called)
@@ -274,46 +270,29 @@ class NotificationPusherTestCase(unittest.TestCase):
         mock_parse_cmd_args = mock.Mock(return_value=args)
         mock_daemonize = mock.Mock()
         mock_create_pidfile = mock.Mock()
-        mock_stop_cycle = mock.Mock(side_effect=stop_cycle)
         with patch('source.notification_pusher.parse_cmd_args', mock_parse_cmd_args),\
              patch('source.notification_pusher.daemonize', mock_daemonize),\
              patch('source.notification_pusher.create_pidfile', mock_create_pidfile),\
              patch('source.notification_pusher.load_config_from_pyfile', mock_load_config_from_pyfile),\
-             patch('source.notification_pusher.patch_all', mock.Mock()),\
-             patch('source.notification_pusher.install_signal_handlers', mock.Mock()),\
-             patch('source.notification_pusher.dictConfig', mock.Mock()),\
-             patch('source.notification_pusher.main_loop', mock.Mock(side_effect=mock_stop_cycle)),\
+             patch('source.notification_pusher.main_preparation', mock.Mock()),\
+             patch('source.notification_pusher.main_run', mock.Mock()),\
              patch('source.notification_pusher.os.path.realpath', mock.Mock()),\
-             patch('source.notification_pusher.os.path.expanduser', mock.Mock()),\
-             patch('source.notification_pusher.sleep', mock_stop_cycle):
+             patch('source.notification_pusher.os.path.expanduser', mock.Mock()):
             return_exitcode = notification_pusher.main(args)
             self.assertEqual(return_exitcode, exit_code)
             self.assertEqual(mock_daemonize.call_count, 0)
             self.assertEqual(mock_create_pidfile.call_count, 0)
             notification_pusher.run_application = True
 
-    def test_main_main_loop_bad(self):
-        args = mock.MagicMock()
-        args.daemon = False
-        args.pidfile = False
-        exit_code = 0
-        mock_load_config_from_pyfile = mock.Mock(return_value=config)
-        mock_parse_cmd_args = mock.Mock(return_value=args)
+    def test_main_run_bad(self):
+        uncorrect_config = 'everything bad'
         mock_stop_cycle = mock.Mock(side_effect=stop_cycle)
-        with patch('source.notification_pusher.parse_cmd_args', mock_parse_cmd_args),\
-             patch('source.notification_pusher.load_config_from_pyfile', mock_load_config_from_pyfile),\
-             patch('source.notification_pusher.patch_all', mock.Mock()),\
-             patch('source.notification_pusher.install_signal_handlers', mock.Mock()),\
-             patch('source.notification_pusher.dictConfig', mock.Mock()),\
-             patch('source.notification_pusher.main_loop', mock.Mock(side_effect=Exception)),\
-             patch('source.notification_pusher.os.path.realpath', mock.Mock()),\
-             patch('source.notification_pusher.os.path.expanduser', mock.Mock()),\
+        with patch('source.notification_pusher.main_loop', mock.Mock(side_effect=[True])),\
              patch('source.notification_pusher.sleep', mock_stop_cycle),\
              patch('source.notification_pusher.logger', Mock()):
-            return_exitcode = notification_pusher.main(args)
-            self.assertEqual(return_exitcode, exit_code)
-            self.assertRaises(Exception)
-            notification_pusher.run_application = True
+            with self.assertRaises(AttributeError):
+                notification_pusher.main_run(uncorrect_config)
+
 
 
     def test_main_loop_with_uncorrect_tupe_of_parametr(self):

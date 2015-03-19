@@ -310,15 +310,21 @@ def main(argv):
         os.path.realpath(os.path.expanduser(args.config))
     )
 
+    main_preparation(config)
+    main_run(config)
+
+    return exit_code
+
+
+def main_preparation(config):
     patch_all()
-
     dictConfig(config.LOGGING)
-
     current_thread().name = 'pusher.main'
-
     install_signal_handlers()
 
-    while run_application:
+
+def main_run(config):
+     while run_application:
         try:
             main_loop(config)
         except Exception as exc:
@@ -326,12 +332,9 @@ def main(argv):
                 'Error in main loop. Go to sleep on {} second(s).'.format(config.SLEEP_ON_FAIL)
             )
             logger.exception(exc)
-
             sleep(config.SLEEP_ON_FAIL)
-    else:
+     else:
         logger.info('Stop application loop in main.')
-
-    return exit_code
 
 
 if __name__ == '__main__':
