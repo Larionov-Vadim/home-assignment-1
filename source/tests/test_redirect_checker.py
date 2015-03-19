@@ -46,7 +46,7 @@ class RedirectCheckerTestCase(unittest.TestCase):
              patch('source.redirect_checker.active_children', mock.Mock(return_value=[mock_active_children])),\
              patch('source.redirect_checker.sleep', mock_stop_cycle):
             redirect_checker.main_loop(config)
-            self.assertIsNot(mock_spawn_workers.call_count, 0)
+            self.assertGreater(mock_spawn_workers.call_count, 0)
             redirect_checker.loop = True
 
     def test_main_loop_check_network_status_ok_and_workers_number_bad(self):
