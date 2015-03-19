@@ -3,6 +3,7 @@ import unittest
 import mock
 from mock import patch, Mock
 import source.lib as init
+import pycurl
 
 
 def get_url_fake(url, timeout, user_agent):
@@ -217,14 +218,65 @@ class InitTestCase(unittest.TestCase):
 
 
     def test_get_url_without_redirects(self):
+        expected_content = 'fake content'
         prepare_url_mock = Mock()
-        with patch('source.lib.make_pycurl_request', Mock(return_value=('fake_content', None))), \
+        pycurl_mock = Mock(return_value=(expected_content, None))
+        with patch('source.lib.make_pycurl_request', pycurl_mock), \
              patch('source.lib.prepare_url', prepare_url_mock), \
              patch('source.lib.prepare_url.check_for_meta', Mock(return_value=None)):
-            ignore, ret_type, ret_content = init.get_url('fake_url', timeout=1)
+            ignore, actual_type, actual_content = init.get_url('fake_url', timeout=1)
         prepare_url_mock.assert_called_once_with(None)
-        self.assertIsNone(ret_type)
-        self.assertEqual(ret_content, 'fake_content')
+        self.assertIsNone(actual_type)
+        self.assertEqual(actual_content, expected_content)
+
+    def test_get_url_with_pycurl_error(self):
+        expected_url = 'https://fake.url.com'
+        with patch('source.lib.make_pycurl_request', Mock(side_effect=pycurl.error)), \
+             patch('source.lib.logger', Mock()):
+            actual_url, actual_type, actual_content = \
+                init.get_url(expected_url, timeout=1, user_agent='fake_user')
+        self.assertEqual(actual_url, expected_url)
+        self.assertEqual(actual_type, 'ERROR')
+        self.assertIsNone(actual_content)
+
+    def test_get_url_with_value_error(self):
+        expected_url = 'https://fake.url.com'
+        with patch('source.lib.make_pycurl_request', Mock(side_effect=ValueError)), \
+             patch('source.lib.logger', Mock()):
+            actual_url, actual_type, actual_content = init.get_url(expected_url, timeout='value')
+        self.assertEqual(actual_url, expected_url)
+        self.assertEqual(actual_type, 'ERROR')
+        self.assertIsNone(actual_content)
+
+    def test_get_url_with_ok_redirect(self):
+        url = 'http://fake.url.com'
+        expected_content = 'Bingo!'
+        redirect_url = 'http://www.odnoklassniki.ru/lalala.st.redirect'
+        pycurl_mock = Mock(return_value=(expected_content, redirect_url))
+        with patch('source.lib.make_pycurl_request', pycurl_mock):
+            actual_url, actual_type, actual_content = \
+                init.get_url(url, timeout=10, user_agent='fake_user')
+        self.assertIsNone(actual_url)
+        self.assertIsNone(actual_type)
+        self.assertEqual(actual_content, expected_content)
+
+    def test_get_url(self):
+        url = 'http://fake.url.com'
+        expected_type = init.REDIRECT_HTTP
+        expected_content = 'fake content'
+        redirect_url = 'https://redirect.fake.url.org'
+        prepare_url = 'http://prepare.redirect.url.com'
+        pycurl_mock = Mock(return_value=(expected_content, redirect_url))
+        prepare_url_mock = Mock(return_value=prepare_url)
+        with patch('source.lib.make_pycurl_request', pycurl_mock),\
+             patch('source.lib.logger', Mock()), \
+             patch('source.lib.prepare_url', prepare_url_mock):
+            actual_url, actual_type, actual_content = \
+                init.get_url(url, timeout=3, user_agent='fake_user')
+        prepare_url_mock.assert_called_once_with(redirect_url)
+        self.assertEqual(actual_url, prepare_url)
+        self.assertEqual(actual_type, expected_type)
+        self.assertEqual(actual_content, expected_content)
 
 
     def test_prepare_url_with_none_url(self):

@@ -110,5 +110,3 @@ class RedirectCheckerTestCase(unittest.TestCase):
             self.assertEqual(return_exitcode, config.EXIT_CODE)
             self.assertEqual(mock_daemonize.call_count, 0)
             self.assertEqual(mock_create_pidfile.call_count, 0)
-
-
