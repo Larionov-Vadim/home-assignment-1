@@ -111,6 +111,7 @@ class UtilsTestCase(unittest.TestCase):
             self.assertFalse(actual_result)
 
 
+
     def test_parse_cmd_args_with_config(self):
         args = ['--config', './config']
         parser = utils.parse_cmd_args(args)
@@ -119,10 +120,9 @@ class UtilsTestCase(unittest.TestCase):
         self.assertFalse(parser.daemon)
 
     def test_parse_cmd_args_without_config(self):
-        sys_exit_mock = mock.Mock()
-        with mock.patch('sys.exit', sys_exit_mock):
+        with self.assertRaises(SystemExit):
             utils.parse_cmd_args([])
-        sys_exit_mock.assert_called_once_with(2)
+        self.assertTrue(exit)
 
     def test_parse_cmd_args_check_add_daemon_argument(self):
         args = ['--config', './config',
