@@ -184,6 +184,12 @@ class UtilsTestCase(unittest.TestCase):
         self.assertTrue(p_mock.daemon)
         p_mock.start.assert_called_once_with()
 
+    def test_spawn_workers_with_more_then_one_iteration(self):
+        p_mock = Mock()
+        with patch('source.lib.utils.Process', mock.Mock(return_value=p_mock)):
+            utils.spawn_workers(4, target_fake_func, [], parent_pid=102)
+        self.assertEqual(p_mock.start.call_count, 4)
+
 
     def test_get_tube_set_args(self):
         fake_space = 7

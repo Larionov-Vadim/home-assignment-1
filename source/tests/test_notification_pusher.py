@@ -52,7 +52,7 @@ class NotificationPusherTestCase(unittest.TestCase):
         os_exit_mock = Mock()
         pid = 139  # pid != 0
         with patch('os.fork', mock.Mock(return_value=pid)), \
-             patch('os._exit', os_exit_mock ):
+             patch('os._exit', os_exit_mock):
             notification_pusher.daemonize()
         os_exit_mock.assert_called_once_with(0)
 
@@ -61,7 +61,7 @@ class NotificationPusherTestCase(unittest.TestCase):
         os_exit_mock = Mock()
         with patch('os.fork', Mock(side_effect=pid)), \
              patch('os._exit', os_exit_mock), \
-             patch('os.setsid', mock.Mock()):
+             patch('os.setsid', Mock()):
             notification_pusher.daemonize()
         os_exit_mock.assert_called_once_with(0)
 
@@ -84,7 +84,7 @@ class NotificationPusherTestCase(unittest.TestCase):
             self.assertRaises(Exception, notification_pusher.daemonize)
 
 
-    def test_load_config_from_pyfile_correct(self):
+    def test_load_config_from_pyfile_positive_test(self):
         config_mock = Mock()
         execfile_mock = Mock(side_effect=execfile_fake_for_correct)
         with patch('source.notification_pusher.Config', config_mock), \
@@ -92,7 +92,7 @@ class NotificationPusherTestCase(unittest.TestCase):
             return_cfg = notification_pusher.load_config_from_pyfile('filepath')
         self.assertEqual(return_cfg.KEY, 'value')
 
-    def test_load_config_from_pyfile_uncorrect(self):
+    def test_load_config_from_pyfile_negative_test(self):
         execfile_mock = Mock(side_effect=execfile_fake_for_incorrect)
         with patch('source.notification_pusher.Config', Mock()), \
              patch('__builtin__.execfile', execfile_mock):
@@ -148,12 +148,14 @@ class NotificationPusherTestCase(unittest.TestCase):
 
     def test_done_with_processed_tasks_raise_tarantool_databaseerror_exception(self):
         task_mock = Mock()
-        task_mock.fake_action.side_effect = tarantool.DatabaseError('AAA')
+        task_mock.fake_action.side_effect = tarantool.DatabaseError('Test exception')
         task_queue_mock = Mock()
         task_queue_mock.qsize.return_value = 1
         task_queue_mock.get_nowait.side_effect = lambda: (task_mock, 'fake_action')
-        with patch('source.notification_pusher.logger', Mock()):
-            self.assertRaises(tarantool.DatabaseError, notification_pusher.done_with_processed_tasks(task_queue_mock))
+        logger_mock = Mock()
+        with patch('source.notification_pusher.logger', logger_mock):
+            notification_pusher.done_with_processed_tasks(task_queue_mock)
+        self.assertEqual(logger_mock.exception.call_count, 1)
 
 
     def test_install_signal_handlers(self):
