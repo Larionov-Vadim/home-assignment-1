@@ -287,6 +287,24 @@ class InitTestCase(unittest.TestCase):
         self.assertEqual(actual_type, expected_type)
         self.assertEqual(actual_content, expected_content)
 
+    def test_get_url_with_redirect_in_meta_tag(self):
+        url = 'http://fake.url.com'
+        expected_type = init.REDIRECT_META
+        expected_content = 'fake content'
+        prepare_url = 'http://prepare.meta.redirect.url.com'
+        pycurl_mock = Mock(return_value=(expected_content, None))
+        prepare_url_mock = Mock(return_value=prepare_url)
+        with patch('source.lib.make_pycurl_request', pycurl_mock),\
+             patch('source.lib.logger', Mock()), \
+             patch('source.lib.prepare_url', prepare_url_mock),\
+             patch('source.lib.check_for_meta', Mock(return_value='http://meta.redirect.url')):
+            actual_url, actual_type, actual_content = \
+                init.get_url(url, timeout=10, user_agent='fake_user')
+        prepare_url_mock.assert_called_once_with('http://meta.redirect.url')
+        self.assertEqual(actual_url, prepare_url)
+        self.assertEqual(actual_type, expected_type)
+        self.assertEqual(actual_content, expected_content)
+
 
     def test_prepare_url_with_none_url(self):
         url = None

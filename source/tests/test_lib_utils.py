@@ -92,23 +92,30 @@ class UtilsTestCase(unittest.TestCase):
 
     def test_check_network_status_correct(self):
         with patch('urllib2.urlopen', Mock):
-            actual_result = utils.check_network_status('check_utl', 3)
+            actual_result = utils.check_network_status('https://check.url.com', timeout=1)
             self.assertTrue(actual_result)
 
     def test_check_network_status_URLError(self):
         with patch('urllib2.urlopen', Mock(side_effect=URLError('Test exception'))):
-            actual_result = utils.check_network_status('check_utl', 3)
+            actual_result = utils.check_network_status('https://check.url.com', timeout=2)
             self.assertFalse(actual_result)
 
     def test_check_network_status_raise_socket_error_exception(self):
         with patch('urllib2.urlopen', Mock(side_effect=socket.error)):
-            actual_result = utils.check_network_status('check_utl', 3)
+            actual_result = utils.check_network_status('https://check.url.com', timeout=4)
             self.assertFalse(actual_result)
 
     def test_check_network_status_raise_ValueError_exception(self):
         with patch('urllib2.urlopen', Mock(side_effect=ValueError)):
-            actual_result = utils.check_network_status('check_utl', 3)
+            actual_result = utils.check_network_status('https://check.url.com', timeout=8)
             self.assertFalse(actual_result)
+
+    def test_check_network_status_raise_set_url_and_timeout(self):
+        urlopen_mock = Mock()
+        with patch('urllib2.urlopen', urlopen_mock):
+            actual_result = utils.check_network_status('https://check.url.com', timeout=16)
+        urlopen_mock.assert_called_once_with(url='https://check.url.com', timeout=16)
+        self.assertTrue(actual_result)
 
 
     def test_parse_cmd_args_with_config(self):
