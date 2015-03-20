@@ -306,6 +306,26 @@ class InitTestCase(unittest.TestCase):
         self.assertEqual(actual_type, expected_type)
         self.assertEqual(actual_content, expected_content)
 
+    def test_get_url_with_market_redirect(self):
+        url = 'http://fake.url.com'
+        expected_type = init.REDIRECT_META
+        expected_content = 'This content is fake'
+        prepare_url = 'http://object.urlunparse.with.params'
+        pycurl_mock = Mock(return_value=(expected_content, None))
+        prepare_url_mock = Mock(return_value=prepare_url)
+        fix_redirect_url = 'https://play.google.com/store/apps/meta_redirect_url'
+        fix_market_url_mock = Mock(return_value=fix_redirect_url)
+        with patch('source.lib.make_pycurl_request', pycurl_mock),\
+             patch('source.lib.logger', Mock()), \
+             patch('source.lib.prepare_url', prepare_url_mock),\
+             patch('source.lib.check_for_meta', Mock(return_value='market://meta_redirect_url')),\
+             patch('source.lib.fix_market_url', fix_market_url_mock):
+            actual_url, actual_type, actual_content = init.get_url(url, timeout=8)
+        prepare_url_mock.assert_called_once_with(fix_redirect_url)
+        self.assertEqual(actual_url, prepare_url)
+        self.assertEqual(actual_type, expected_type)
+        self.assertEqual(actual_content, expected_content)
+
 
     def test_prepare_url_with_none_url(self):
         url = None
@@ -322,12 +342,10 @@ class InitTestCase(unittest.TestCase):
         url = 'https://github.com/'
         mock_netloc = mock.Mock()
         mock_netloc.encode.side_effect = UnicodeError
-        mock_urlunparse = mock.Mock(return_value='smth')
-        waiting_result = 'smth'
+        mock_urlunparse = mock.Mock(return_value=url)
         with mock.patch("source.lib.urlparse", mock.Mock(return_value=(None, mock_netloc, None, None, None, None))),\
              mock.patch("source.lib.quote", mock.Mock()),\
              mock.patch("source.lib.quote_plus", mock.Mock()),\
              mock.patch("source.lib.urlunparse", mock_urlunparse):
             result = init.prepare_url(url)
-            self.assertEqual(result, waiting_result)
-            self.assertRaises(UnicodeError)
+            self.assertEqual(result, url)

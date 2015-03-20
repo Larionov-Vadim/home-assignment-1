@@ -1,4 +1,5 @@
 # coding: utf-8
+import json
 import unittest
 import mock
 import signal
@@ -8,6 +9,7 @@ from source import notification_pusher
 from requests import RequestException
 from gevent import queue as gevent_queue
 from source.lib.utils import Config
+from tarantool_queue import tarantool_queue
 
 
 def stop_cycle(self):
@@ -36,32 +38,48 @@ config.SLEEP_ON_FAIL = 0
 config.SLEEP = 1
 
 
+class StubTarantoolQueueTask(object):
+    def __init__(self):
+        self.stub_data = dict()
+        self.url = 'https://fake.callback.url'  # callback url
+        self.stub_data['callback_url'] = self.url
+
+    @property
+    def task_id(self):
+        return -1   # fake id
+
+    @property
+    def data(self):
+        return self
+
+    def copy(self):
+        return self.stub_data
+
+
 class NotificationPusherTestCase(unittest.TestCase):
-    def test_notification_worker(self):
-        task_mock = mock.MagicMock()
+    def test_notification_worker_positive_test(self):
+        task = StubTarantoolQueueTask()
         task_queue_mock = Mock()
-        with patch('requests.post', Mock()), \
-             patch('json.dumps', Mock()), \
-             patch('source.notification_pusher.logger', Mock()):
-            notification_pusher.notification_worker(task_mock, task_queue_mock)
-        task_queue_mock.put.assert_called_once_with((task_mock, 'ack'))
+        request_post_mock = Mock()
+        kwargs = {'fake_key': 'fake_value'}
+        with patch('source.notification_pusher.logger', Mock()), \
+             patch('requests.post', request_post_mock):
+            notification_pusher.notification_worker(task, task_queue_mock, **kwargs)
+        request_post_mock.assert_called_once_with(
+            task.url,
+            data=json.dumps(task.data.copy()),
+            **kwargs
+        )
+        task_queue_mock.put.assert_called_once_with((task, 'ack'))
 
     def test_notification_worker_with_request_exception(self):
-        task_mock = mock.MagicMock()
-        task_queue_mock = mock.Mock()
-        with patch('requests.post', mock.Mock(side_effect=RequestException('Test exception'))), \
-             patch('json.dumps', mock.Mock()), \
-             patch('source.notification_pusher.logger', Mock()):
-            notification_pusher.notification_worker(task_mock, task_queue_mock)
-        task_queue_mock.put.assert_called_once_with((task_mock, 'bury'))
-
-
-    def test_done_with_processed_tasks_empty_queue_raise_exception(self):
+        task = StubTarantoolQueueTask()
         task_queue_mock = Mock()
-        task_queue_mock.qsize.return_value = 1
-        task_queue_mock.get_nowait.side_effect = gevent_queue.Empty('Test exception')
-        with patch('source.notification_pusher.logger', Mock()):
-            self.assertRaises(gevent_queue.Empty, notification_pusher.done_with_processed_tasks(task_queue_mock))
+        with patch('requests.post', mock.Mock(side_effect=RequestException('Test exception'))), \
+             patch('source.notification_pusher.logger', Mock()):
+            notification_pusher.notification_worker(task, task_queue_mock)
+        task_queue_mock.put.assert_called_once_with((task, 'bury'))
+
 
     def test_done_with_processed_tasks_qsize_zero(self):
         task_queue_mock = mock.Mock()

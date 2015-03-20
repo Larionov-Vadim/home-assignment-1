@@ -8,14 +8,8 @@ from mock import patch, Mock
 
 
 def execfile_fake_for_correct(filepath, variables):
-    variables['KEY'] = 'value'
-
-
-def execfile_fake_for_incorrect(filepath, variables):
-    variables['key'] = 'VALUE'
-    variables['Key'] = 'Value'
-    variables['kEY'] = 'value'
-    variables['_KEY'] = '_value'
+    variables['KEY'] = 'VALUE'
+    variables[''] = 'ingore'
 
 
 def target_fake_func(args):
@@ -70,24 +64,13 @@ class UtilsTestCase(unittest.TestCase):
         m_open().write.assert_called_once_with(str(pid))
 
 
-    def test_load_config_from_pyfile_positive_test(self):
+    def test_load_config_from_pyfile(self):
         config_mock = Mock()
         execfile_mock = Mock(side_effect=execfile_fake_for_correct)
         with patch('source.lib.utils.Config', config_mock), \
              patch('__builtin__.execfile', execfile_mock):
-            return_cfg = utils.load_config_from_pyfile('filepath')
-        self.assertEqual(return_cfg.KEY, 'value')
-
-    def test_load_config_from_pyfile_negative_test(self):
-        config_mock = Mock()
-        execfile_mock = Mock(side_effect=execfile_fake_for_incorrect)
-        with patch('source.lib.utils.Config', config_mock), \
-             patch('__builtin__.execfile', execfile_mock):
-            return_cfg = utils.load_config_from_pyfile('filepath')
-        self.assertNotEqual(return_cfg.key, 'VALUE')
-        self.assertNotEqual(return_cfg.Key, 'value')
-        self.assertNotEqual(return_cfg.kEY, 'value')
-        self.assertNotEqual(return_cfg._KEY, 'value')
+            actual_cfg = utils.load_config_from_pyfile('filepath')
+        self.assertEqual(actual_cfg.KEY, 'VALUE')
 
 
     def test_check_network_status_correct(self):

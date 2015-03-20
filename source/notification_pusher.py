@@ -33,7 +33,7 @@ exit_code = 0
 logger = logging.getLogger('pusher')
 
 
-def notification_worker(task, task_queue, *args, **kwargs):
+def notification_worker(task, task_queue, **kwargs):
     """
     Обработчик задачи отправки уведомления.
 
@@ -41,7 +41,6 @@ def notification_worker(task, task_queue, *args, **kwargs):
     :type task: tarantool_queue.Task
     :param task_queue: очередь для обработанных задач
     :type task_queue: gevent.queue.Queue
-    :param args:
     :param kwargs:
     """
     try:
@@ -55,7 +54,7 @@ def notification_worker(task, task_queue, *args, **kwargs):
         logger.info('Send data to callback url [{url}].'.format(url=url))
 
         response = requests.post(
-            url, data=json.dumps(data), *args, **kwargs
+            url, data=json.dumps(data), **kwargs
         )
 
         logger.info('Callback url [{url}] response status code={status_code}.'.format(
@@ -77,20 +76,17 @@ def done_with_processed_tasks(task_queue):
     logger.debug('Send info about finished tasks to queue.')
 
     for _ in xrange(task_queue.qsize()):
+        task, action_name = task_queue.get_nowait()
+
+        logger.debug('{name} task#{task_id}.'.format(
+            name=action_name.capitalize(),
+            task_id=task.task_id
+        ))
+
         try:
-            task, action_name = task_queue.get_nowait()
-
-            logger.debug('{name} task#{task_id}.'.format(
-                name=action_name.capitalize(),
-                task_id=task.task_id
-            ))
-
-            try:
-                getattr(task, action_name)()
-            except tarantool.DatabaseError as exc:
-                logger.exception(exc)
-        except gevent_queue.Empty:
-            break
+            getattr(task, action_name)()
+        except tarantool.DatabaseError as exc:
+            logger.exception(exc)
 
 
 def stop_handler(signum):
