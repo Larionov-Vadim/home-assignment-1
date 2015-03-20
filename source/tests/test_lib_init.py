@@ -4,6 +4,7 @@ import mock
 from mock import patch, Mock
 import source.lib as init
 import pycurl
+from urlparse import urlparse
 
 
 def get_url_fake(url, timeout, user_agent):
@@ -314,12 +315,8 @@ class InitTestCase(unittest.TestCase):
 
     def test_prepare_url_url_is_ok(self):
         url = 'https://github.com/'
-        mock_urlunparse = mock.Mock(return_value='smth')
-        waiting_result = 'smth'
-        with patch('source.lib.urlunparse', mock_urlunparse):
-            result = init.prepare_url(url)
-            self.assertGreater(mock_urlunparse.called, 0)
-            self.assertEqual(result, waiting_result)
+        result = init.prepare_url(url)
+        self.assertEqual(result, url)
 
     def test_prepare_url_exception(self):
         url = 'https://github.com/'

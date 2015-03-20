@@ -87,8 +87,8 @@ class RedirectCheckerTestCase(unittest.TestCase):
              patch('source.redirect_checker.os.path.expanduser', mock.Mock()):
             return_exitcode = redirect_checker.main(args)
             self.assertEqual(return_exitcode, config.EXIT_CODE)
-            self.assertTrue(mock_daemonize.assert_called)
-            self.assertTrue(mock_create_pidfile.assert_called)
+            self.assertGreater(mock_daemonize.call_count, 0)
+            self.assertGreater(mock_create_pidfile.call_count, 0)
 
     def test_main_check_args_is_not_daemon_and_pidfile(self):
         args = mock.MagicMock()

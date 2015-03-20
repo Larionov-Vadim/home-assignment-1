@@ -128,7 +128,6 @@ class UtilsTestCase(unittest.TestCase):
     def test_parse_cmd_args_without_config(self):
         with self.assertRaises(SystemExit):
             utils.parse_cmd_args([])
-        self.assertTrue(exit)
 
     def test_parse_cmd_args_check_add_daemon_argument(self):
         args = ['--config', './config',
