@@ -9,7 +9,12 @@ from mock import patch, Mock
 
 def execfile_fake_for_correct(filepath, variables):
     variables['KEY'] = 'VALUE'
-    variables[''] = 'ingore'
+
+
+def execfile_fake_some_camelcase_variables(filepath, variables):
+    variables['KEY'] = 'value'
+    variables['CamelCase'] = 'ingore'
+    variables['Key'] = 'ignore'
 
 
 def target_fake_func(args):
@@ -64,13 +69,18 @@ class UtilsTestCase(unittest.TestCase):
         m_open().write.assert_called_once_with(str(pid))
 
 
-    def test_load_config_from_pyfile(self):
-        config_mock = Mock()
+    def test_load_config_from_pyfile_uppercase_variable(self):
         execfile_mock = Mock(side_effect=execfile_fake_for_correct)
-        with patch('source.lib.utils.Config', config_mock), \
-             patch('__builtin__.execfile', execfile_mock):
-            actual_cfg = utils.load_config_from_pyfile('filepath')
-        self.assertEqual(actual_cfg.KEY, 'VALUE')
+        with patch('__builtin__.execfile', execfile_mock):
+            config = utils.load_config_from_pyfile('filepath')
+        self.assertEqual(config.KEY, 'VALUE')
+
+    def test_load_config_from_pyfile_camelcase_variables(self):
+        execfile_mock = Mock(side_effect=execfile_fake_some_camelcase_variables)
+        with patch('__builtin__.execfile', execfile_mock):
+            config = utils.load_config_from_pyfile('filepath')
+        self.assertFalse(hasattr(config, 'CamelCase'))
+        self.assertFalse(hasattr(config, 'Key'))
 
 
     def test_check_network_status_correct(self):
