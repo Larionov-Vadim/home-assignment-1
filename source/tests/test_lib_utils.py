@@ -9,6 +9,7 @@ from mock import patch, Mock
 
 def execfile_fake_for_correct(filepath, variables):
     variables['KEY'] = 'VALUE'
+    variables['UPPER_CASE'] = 'value'
 
 
 def execfile_fake_some_camelcase_variables(filepath, variables):
@@ -69,11 +70,12 @@ class UtilsTestCase(unittest.TestCase):
         m_open().write.assert_called_once_with(str(pid))
 
 
-    def test_load_config_from_pyfile_uppercase_variable(self):
+    def test_load_config_from_pyfile_uppercase_variables(self):
         execfile_mock = Mock(side_effect=execfile_fake_for_correct)
         with patch('__builtin__.execfile', execfile_mock):
             config = utils.load_config_from_pyfile('filepath')
         self.assertEqual(config.KEY, 'VALUE')
+        self.assertEqual(config.UPPER_CASE, 'value')
 
     def test_load_config_from_pyfile_camelcase_variables(self):
         execfile_mock = Mock(side_effect=execfile_fake_some_camelcase_variables)
